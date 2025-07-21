@@ -65,6 +65,41 @@ Use colors like `#FCFCF9` for the background of the Chat interface pace. All tex
        - Font: 13px system-UI-sans, weight 400, color `#555555`
        - Spacing: 8px vertical between items
 
+- **Converstation State View**
+
+  This should display the current conversation history bewteen the user and the AI agent. Users message should display in chronological order (top to bottom) once they press the `Send button`. The conversation history can grow long, so make sure there is a scroll funtionality that allows the user to scroll up and down the converstation history.
+
+  Since the AI integration is not yet built, mock a static response for the AI message. All USER message should return this static response for the time being.
+  1. **User Message**
+  - **Container**
+    - margin: 0 16px 16px; /_ 16px gap on left, right, and bottom _/
+    - background: #F0EFED; /_ light-grey background _/
+    - border: 1px solid #E3E0D8; /_ light border _/
+    - border-radius: 8px; /_ softly rounded corners _/
+    - display: flex;
+    - align-items: left;
+    - padding: 8px 6px; /_ reduced inner spacing for closer text positioning _/
+    - min-height: 22 px;
+  - **Text Display**
+    - Font: 13px system-UI, weight 400
+    - Color: `#333333`
+    - Background: transparent
+    - Border: none
+    - Flex: 1
+    - Margin: 0 6px
+
+  Each user message should be contained in a box. The box should follow the same style and width as the `Message Input Area` container. The box should be as small as possible to fit all of the text from the USER message. The box should be larger for longer USER messages. USER messages should be left-aligned. Text within the container starts closer to the left edge for better alignment.
+  2. **AI Message**
+  - **Text Display**
+  - Font: 12px system-UI-sans, weight 400
+  - Color: `#555555`
+  - Text-align: left
+  - Line-height: 1.4
+  - Margin-bottom: 24px
+  - Padding: 0 16px 0 28px; /_ left padding aligns text start with UserMessage text _/
+
+  Each AI message be a left-aligned text WITHOUT a container. The AI response can grow as long as it needs to. AI message text starts at the same vertical position as UserMessage text for consistent alignment.
+
 ---
 
 ## 3. Message Input Area
