@@ -1,4 +1,4 @@
-# Chat UI Specificiation
+# Chat UI Specification
 
 This document is used to highlight the chat UI interface in the task pane in detail. This is an extension from the main project specification which is located in the `spec.md` file.
 
@@ -88,8 +88,7 @@ Use colors like `#FCFCF9` for the background of the Chat interface pace. All tex
     - Flex: 1
     - Margin: 0 6px
 
-  Each user message should be contained in a box. The box should follow the same style and width as the `Message Input Area` container. The box should be as small as possible to fit all of the text from the USER message. The box should be larger for longer USER messages. USER messages should be left-aligned. Text within the container starts closer to the left edge for better alignment.
-  2. **AI Message**
+  Each user message should be contained in a box. The box should follow the same style and width as the `Message Input Area` container. The box should be as small as possible to fit all of the text from the USER message. The box should be larger for longer USER messages. USER messages should be left-aligned. Text within the container starts closer to the left edge for better alignment. 2. **AI Message**
   - **Text Display**
   - Font: 12px system-UI-sans, weight 400
   - Color: `#555555`

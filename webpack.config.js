@@ -1,5 +1,7 @@
 /* eslint-disable no-undef */
 
+require('dotenv').config();
+
 const devCerts = require("office-addin-dev-certs");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
@@ -88,6 +90,11 @@ module.exports = async (env, options) => {
       new webpack.ProvidePlugin({
         Promise: ["es6-promise", "Promise"],
       }),
+      new webpack.DefinePlugin({
+        'process.env.ANTHROPIC_API_KEY': JSON.stringify(process.env.ANTHROPIC_API_KEY),
+        'process.env.DEV_SERVER_PORT': JSON.stringify(process.env.DEV_SERVER_PORT),
+        'process.env.REACT_APP_API_BASE_URL': JSON.stringify(process.env.REACT_APP_API_BASE_URL),
+      }),
     ],
     devServer: {
       hot: true,
@@ -99,6 +106,22 @@ module.exports = async (env, options) => {
         options: env.WEBPACK_BUILD || options.https !== undefined ? options.https : await getHttpsOptions(),
       },
       port: process.env.npm_package_config_dev_server_port || 3000,
+      proxy: [
+        // {
+        //   context: ['/api'],
+        //   target: `http://localhost:${process.env.BACKEND_PORT || 3001}`,
+        //   secure: false,
+        //   changeOrigin: true,
+        //   logLevel: 'debug'
+        // },
+        {
+          context: ['/chat', '/history', '/test-sse', '/test-ai', '/test-ai-stream', '/api'],
+          target: `http://localhost:${process.env.BACKEND_PORT || 3001}`,
+          secure: false,
+          changeOrigin: true,
+          logLevel: 'debug'
+        }
+      ]
     },
   };
 

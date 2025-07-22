@@ -6,7 +6,7 @@ import TopBar from "./TopBar";
 import EmptyState from "./EmptyState";
 import ConversationHistory from "./ConversationHistory";
 import MessageInputArea from "./MessageInputArea";
-import { generateAIResponse } from "../utils/mockAI";
+import backendClient from "../services/backendClient";
 
 const useStyles = makeStyles({
   chatContainer: {
@@ -22,15 +22,32 @@ const ChatInterface = () => {
   const styles = useStyles();
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [streamingMessageId, setStreamingMessageId] = useState(null);
+  
+  // Generate unique IDs to avoid React key conflicts
+  const generateUniqueId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
   const handleSendMessage = async ({ message, action, attachments }) => {
     console.log("Sending message:", { message, action, attachments });
     setIsLoading(true);
 
     try {
+      // Check if backend is available
+      const isAvailable = await backendClient.isBackendAvailable();
+      if (!isAvailable) {
+        const errorMessage = {
+          id: generateUniqueId(),
+          type: "ai",
+          text: "Backend service is not available. Please ensure the backend server is running and your API key is configured.",
+          timestamp: new Date().toISOString(),
+        };
+        setMessages(prevMessages => [...prevMessages, errorMessage]);
+        return;
+      }
+
       // Create user message and add to conversation
       const userMessage = {
-        id: Date.now().toString() + "-user",
+        id: generateUniqueId(),
         type: "user",
         text: message,
         timestamp: new Date().toISOString(),
@@ -39,33 +56,95 @@ const ChatInterface = () => {
       // Add user message to conversation
       setMessages(prevMessages => [...prevMessages, userMessage]);
 
-      // Get AI response using existing mock system
-      const aiResponse = await generateAIResponse(message);
-      console.log("AI Response:", aiResponse);
-      
-      // Create AI message and add to conversation
-      const aiMessage = {
-        id: Date.now().toString() + "-ai",
-        type: "ai", 
-        text: aiResponse,
-        timestamp: new Date().toISOString(),
-      };
+      // Prepare context from attachments if any
+      let context = null;
+      if (attachments && attachments.length > 0) {
+        context = {
+          attachments: attachments,
+          action: action
+        };
+      }
 
-      // Add AI message to conversation
-      setMessages(prevMessages => [...prevMessages, aiMessage]);
+      // Handle streaming AI response using simplified EventSource
+      let currentAIMessage = null;
+      let accumulatedText = "";
+      const aiMessageId = generateUniqueId();
+      
+      // Create initial AI message for streaming
+      currentAIMessage = {
+        id: aiMessageId,
+        type: "ai",
+        text: "",
+        timestamp: new Date().toISOString(),
+        isStreaming: true
+      };
+      setStreamingMessageId(aiMessageId);
+      setMessages(prevMessages => [...prevMessages, currentAIMessage]);
+
+      // Use simple EventSource streaming as per ai.spec.md
+      await backendClient.streamMessageSimple(
+        message,
+        // onMessage handler - receives each chunk of text
+        (chunkText) => {
+          accumulatedText += chunkText;
+          
+          // Update streaming message with accumulated text
+          setMessages(prevMessages => 
+            prevMessages.map(msg => 
+              msg.id === aiMessageId 
+                ? { ...msg, text: accumulatedText }
+                : msg
+            )
+          );
+        },
+        // onDone handler - called when streaming completes
+        () => {
+          // Mark message as completed
+          setMessages(prevMessages => 
+            prevMessages.map(msg => 
+              msg.id === aiMessageId 
+                ? { ...msg, isStreaming: false }
+                : msg
+            )
+          );
+          setStreamingMessageId(null);
+          console.log("Simple streaming completed");
+        },
+        // onError handler - called on errors
+        (error) => {
+          const errorMessage = {
+            id: aiMessageId, // Use the same ID to replace the streaming message
+            type: "ai",
+            text: "Sorry, I encountered an error. Please try again.",
+            timestamp: new Date().toISOString(),
+            isError: true
+          };
+          
+          // Replace streaming message with error
+          setMessages(prevMessages => 
+            prevMessages.map(msg => 
+              msg.id === aiMessageId ? errorMessage : msg
+            )
+          );
+          setStreamingMessageId(null);
+          console.error("Simple streaming error:", error);
+        }
+      );
       
     } catch (error) {
-      console.error("Error getting AI response:", error);
+      console.error("Error in handleSendMessage:", error);
       
       // Add error message as AI response
       const errorMessage = {
-        id: Date.now().toString() + "-ai-error",
+        id: generateUniqueId(),
         type: "ai",
-        text: "Sorry, I encountered an error. Please try again.",
+        text: "Sorry, I encountered an unexpected error. Please try again.",
         timestamp: new Date().toISOString(),
+        isError: true
       };
       
       setMessages(prevMessages => [...prevMessages, errorMessage]);
+      setStreamingMessageId(null);
     } finally {
       setIsLoading(false);
     }
@@ -87,7 +166,7 @@ const ChatInterface = () => {
       <MessageInputArea 
         onSendMessage={handleSendMessage}
         disabled={isLoading}
-        placeholder={isLoading ? "AI is thinking..." : "Ask Rexcel"}
+        placeholder={isLoading ? (streamingMessageId ? "AI is responding..." : "AI is thinking...") : "Ask Rexcel"}
       />
     </div>
   );

@@ -14,6 +14,7 @@ This is an Excel Office Add-in project built with React and the [Office JavaScri
 ✅ **COMPLETED**: Custom design system following `chat-ui.spec.md`  
 ✅ **COMPLETED**: Enhanced Office.js integration with Excel API  
 ✅ **COMPLETED**: Mock AI response system for development  
+**INCOMPLETE**: Implement AI response system using [Anthropic SDK for Typescript] (https://docs.anthropic.com/en/api/client-sdks#typescript)
 
 The chat interface has been redesigned with a light, creamy theme and single-input approach optimized for Excel workflow integration.
 
@@ -32,13 +33,14 @@ The chat interface has been redesigned with a light, creamy theme and single-inp
   - `getSheetData()` - Read worksheet content for context
   - `detectErrors()` - Analyze worksheet for formula errors
   - `getWorksheetInfo()` - Get worksheet metadata
-- **LLM Integrations** ✅ Mock AI response system implemented in `src/taskpane/utils/mockAI.js` with realistic responses for Excel queries. Ready for Anthropic API integration.
+- **LLM Integrations** Implement Anthropic Typescript SDK for LLM integrations. More details in `ai.spec.md`
 
 ## 2. Functional Requirements
 
 ### 2.1 User Experience
 
 ✅ **IMPLEMENTED**:
+
 - **Task Pane Open:** User clicks on the Rexcel icon in the navigation bar
 - **Chat UI:** Modern single-input interface optimized for 350-450px width
 - **Inputs:**
@@ -56,6 +58,7 @@ The chat interface has been redesigned with a light, creamy theme and single-inp
 ### 2.2 AI Chat Interactions
 
 ✅ **IMPLEMENTED**:
+
 - **User Queries Supported:**
   - "Write a SUM formula for column B where status is 'Paid'"
   - "Explain this formula: =XLOOKUP(...)"
@@ -67,6 +70,7 @@ The chat interface has been redesigned with a light, creamy theme and single-inp
 ### 2.3 Office.js Integration
 
 ✅ **IMPLEMENTED**:
+
 - **Selection Awareness:** `getSelectedRange()` function gets user's current cell/range selection
 - **Insert Operations:**
   - `insertFormula()` - Insert formulas into selected cells with auto-fit
@@ -77,9 +81,12 @@ The chat interface has been redesigned with a light, creamy theme and single-inp
   - `getWorksheetInfo()` - Get worksheet metadata
   - `detectErrors()` - Analyze and report formula errors
 
+  This will be a placeholder implementation until we build the full AI agent functionality with tool calls to interact with Excel enviornment.
+
 ## 3. Non-Functional Requirements
 
 ✅ **ACHIEVED**:
+
 - **Performance:** Bundle optimized to 3.4 MiB (62% reduction), loads under 2 seconds
 - **Responsiveness:** Fully responsive design for 350–450px task pane width
 - **Thread Safety:** Non-blocking async Office.js integration
@@ -88,15 +95,12 @@ The chat interface has been redesigned with a light, creamy theme and single-inp
 
 ## 4. Next Steps
 
-**Ready for Implementation:**
-- Real Anthropic API integration (replace mock system)
-- Chat history display mode
-- File upload and context processing
-- Advanced Excel data analysis features
-- Formula explanation with syntax highlighting
-
 **Technical Foundation Complete:**
+
 - Modern React architecture with custom design system
 - Comprehensive Office.js integration
 - Accessible, responsive UI following design specifications
-- Development and build pipeline optimized
+
+**Ready for Implementation:**
+
+- Basic LLM integration using Anthropic SDK for Typescript

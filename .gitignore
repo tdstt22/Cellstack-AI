@@ -2,5 +2,11 @@
 dist/
 test/testBuild
 
+# Files
+.env
+error.txt
+selfsigned.crt
+selfsigned.key
+
 # Node modules folder
 node_modules/
