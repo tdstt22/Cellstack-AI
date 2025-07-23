@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useState, useRef, useEffect } from "react";
 import { makeStyles } from "@fluentui/react-components";
-import { colors, spacing, typography, commonStyles } from "../styles/theme";
+import { colors, spacing, typography } from "../styles/theme";
 
 const useStyles = makeStyles({
   // Main container with floating card design
@@ -13,23 +13,22 @@ const useStyles = makeStyles({
     position: "relative",
     padding: "8px 12px",
     minHeight: "100px",
-    maxHeight: "180px",
-  },
-  
-  // Context pills display area (when attachments exist)
-  contextArea: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "8px",
-    alignItems: "center",
+    // Removed maxHeight to allow dynamic growth
   },
   
   
-  // Left group with "Add Context..." button positioned at top left
+  
+  // Left group with "Add Context..." button and pills positioned at top left
   leftGroup: {
     position: "absolute",
     top: "8px",
     left: "12px",
+    right: "12px", // Use full container width - right group will overlay if needed
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: "8px",
+    zIndex: 10, // Ensure pills appear below right group controls
   },
   
   addContextButton: {
@@ -68,12 +67,13 @@ const useStyles = makeStyles({
     position: "absolute",
     top: "32px",
     left: "12px", 
-    right: "12px",
+    right: "12px", // Use full container width
     bottom: "32px",
     display: "flex",
     alignItems: "center",
-    paddingRight: "100px", // Leave space for right group controls
+    // No right padding - let text use full width with right group overlaying
   },
+  
   
   textInput: {
     fontFamily: typography.fontFamily,
@@ -86,20 +86,42 @@ const useStyles = makeStyles({
     flex: 1,
     resize: "none",
     minHeight: "20px",
-    maxHeight: "140px",
+    maxHeight: "300px", // Increased max height for better expansion
+    overflowY: "auto", // Enable vertical scrolling when content exceeds max height
+    lineHeight: "1.4", // Consistent line height for better text rendering
     "&::placeholder": {
       color: colors.placeholder,
+    },
+    // Custom scrollbar styling for better appearance
+    "&::-webkit-scrollbar": {
+      width: "4px",
+    },
+    "&::-webkit-scrollbar-track": {
+      background: "transparent",
+    },
+    "&::-webkit-scrollbar-thumb": {
+      background: colors.placeholder,
+      borderRadius: "2px",
+      "&:hover": {
+        background: colors.textPrimary,
+      },
     },
   },
   
   // Right group with dropdown and send button positioned at bottom right
   rightGroup: {
     position: "absolute",
-    bottom: "8px",
+    bottom: "8px", // Position in the natural bottom area
     right: "12px",
     display: "flex",
     alignItems: "center",
     gap: "12px",
+    zIndex: 20, // Ensure right group appears above text input and pills
+    backgroundColor: colors.bgSecondary, // Match container background to hide overlapping content
+    padding: "4px 8px", // Better padding for text overlay
+    borderRadius: "6px",
+    // Subtle shadow to distinguish from text content
+    // boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
   },
   
   dropdown: {
@@ -222,6 +244,9 @@ const useStyles = makeStyles({
     display: "flex",
     alignItems: "center",
     gap: "4px",
+    maxWidth: "200px", // Prevent pills from taking too much horizontal space
+    minWidth: "60px",   // Ensure pills have minimum readable width
+    flexShrink: 0,      // Prevent pills from shrinking too much
   },
   
   fileName: {
@@ -229,6 +254,10 @@ const useStyles = makeStyles({
     fontSize: typography.fontSize.small,
     fontWeight: typography.fontWeight.normal,
     color: colors.textPrimary,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    flex: 1, // Allow filename to take available space in the pill
   },
   
   removeButton: {
@@ -296,19 +325,107 @@ const MessageInputArea = ({
   const [selectedAction, setSelectedAction] = useState(defaultAction);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [attachments, setAttachments] = useState([]);
+  const [leftGroupHeight, setLeftGroupHeight] = useState(32); // Default height for button only
+  const [containerHeight, setContainerHeight] = useState(100); // Dynamic container height
+  const [textareaHeight, setTextareaHeight] = useState(20); // Track actual textarea height
   const textareaRef = useRef(null);
   const dropdownRef = useRef(null);
+  const leftGroupRef = useRef(null);
+  const rightGroupRef = useRef(null);
+  const containerRef = useRef(null);
 
   const actions = ["Ask", "Agent"];
   const canSend = inputValue.trim().length > 0 && !disabled;
 
-  // Auto-resize textarea
+  // Dynamic input container style when context pills are present
+  const inputContainerDynamic = {
+    position: "absolute",
+    top: `${leftGroupHeight}px`,
+    left: "12px", 
+    right: "12px",
+    bottom: "32px",
+    display: "flex",
+    alignItems: "center",
+    // No right padding - let text use full width with right group overlaying
+  };
+
+  // Dynamic container style to accommodate pills and text expansion
+  const dynamicContainerStyle = {
+    minHeight: `${containerHeight}px`,
+    maxHeight: "400px", // Maximum container height to prevent excessive growth
+  };
+
+  // Auto-resize textarea with dynamic height limits and container coordination
   useEffect(() => {
     if (textareaRef.current) {
+      // Reset height to auto to get accurate scroll height
       textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 140)}px`;
+      
+      // Calculate desired height based on content
+      const scrollHeight = textareaRef.current.scrollHeight;
+      const minHeight = 20;
+      const maxExpandHeight = 200; // Max height before scrolling kicks in
+      const maxAbsoluteHeight = 300; // Absolute max height with scrolling
+      
+      // Determine the appropriate height
+      let newHeight;
+      if (scrollHeight <= maxExpandHeight) {
+        // Content fits within expansion limit - expand container
+        newHeight = Math.max(minHeight, scrollHeight);
+      } else {
+        // Content exceeds expansion limit - use max expand height and enable scrolling
+        newHeight = Math.min(maxExpandHeight, maxAbsoluteHeight);
+      }
+      
+      // Apply the calculated height
+      textareaRef.current.style.height = `${newHeight}px`;
+      
+      // Update state to trigger container recalculation
+      if (newHeight !== textareaHeight) {
+        setTextareaHeight(newHeight);
+      }
     }
-  }, [inputValue]);
+  }, [inputValue, textareaHeight]);
+
+  // Calculate dimensions using ResizeObserver for accurate real-time measurements
+  useEffect(() => {
+    const updateLayout = () => {
+      requestAnimationFrame(() => {
+        if (leftGroupRef.current) {
+          // Get accurate measurements using getBoundingClientRect
+          const leftGroupRect = leftGroupRef.current.getBoundingClientRect();
+          
+          // Calculate new dimensions
+          const newLeftGroupHeight = leftGroupRect.height;
+          
+          // Calculate required container height: pill area + buffer + actual text input height + bottom controls
+          const bufferSpace = 16;
+          const bottomControlsHeight = 32;
+          const newContainerHeight = Math.max(100, newLeftGroupHeight + bufferSpace + textareaHeight + bottomControlsHeight);
+          
+          // Update state
+          setLeftGroupHeight(newLeftGroupHeight + bufferSpace);
+          setContainerHeight(newContainerHeight);
+        }
+      });
+    };
+
+    // Setup ResizeObserver for accurate dimension tracking
+    const resizeObserver = new ResizeObserver(() => {
+      updateLayout();
+    });
+
+    if (leftGroupRef.current) {
+      resizeObserver.observe(leftGroupRef.current);
+    }
+
+    // Initial layout calculation
+    updateLayout();
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [attachments, textareaHeight]); // Re-run when attachments or textarea height change
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -349,10 +466,12 @@ const MessageInputArea = ({
         attachments: attachments,
       });
       setInputValue("");
+      setAttachments([]); // Clear context pills after sending message
+      setTextareaHeight(20); // Reset textarea height to minimum
       
       // Reset textarea height
       if (textareaRef.current) {
-        textareaRef.current.style.height = "auto";
+        textareaRef.current.style.height = "20px";
       }
     }
   };
@@ -367,10 +486,18 @@ const MessageInputArea = ({
   };
 
   const handleAddContext = () => {
-    // Mock adding a file for demonstration
+    // Mock adding a file for demonstration with varied names to test wrapping
+    const mockFiles = [
+      "Sheet1.xlsx",
+      "LongDataAnalysisReport.xlsx", 
+      "Data.csv",
+      "QuarterlyFinancialReport.pdf",
+      "Summary.docx",
+      "ExtraLongFileNameForTesting.xlsx"
+    ];
     const mockFile = {
       id: Date.now().toString(),
-      name: `Sheet${attachments.length + 1}.xlsx`,
+      name: mockFiles[attachments.length % mockFiles.length],
     };
     setAttachments(prev => [...prev, mockFile]);
   };
@@ -380,33 +507,15 @@ const MessageInputArea = ({
   };
 
   return (
-    <div className={styles.inputCard} role="form" aria-label="Send message">
-      {/* Context attachments area (only show if attachments exist) */}
-      {attachments.length > 0 && (
-        <div className={styles.contextArea} role="list" aria-label="Attached files">
-          {attachments.map((attachment) => (
-            <div
-              key={attachment.id}
-              className={styles.attachedFilePill}
-              role="listitem"
-              aria-label={`Attached file: ${attachment.name}`}
-            >
-              <span className={styles.fileName}>{attachment.name}</span>
-              <button
-                className={styles.removeButton}
-                onClick={() => handleRemoveAttachment(attachment.id)}
-                aria-label={`Remove ${attachment.name}`}
-                title="Remove attachment"
-              >
-                <XIcon className={styles.removeIcon} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-      
-      {/* Left group - Add Context button (positioned at top left) */}
-      <div className={styles.leftGroup}>
+    <div 
+      ref={containerRef}
+      className={styles.inputCard} 
+      style={dynamicContainerStyle}
+      role="form" 
+      aria-label="Send message"
+    >
+      {/* Left group - Add Context button and pills (positioned at top left) */}
+      <div ref={leftGroupRef} className={styles.leftGroup}>
         <button
           className={styles.addContextButton}
           onClick={handleAddContext}
@@ -416,10 +525,33 @@ const MessageInputArea = ({
           <PaperclipIcon className={styles.paperclipIcon} />
           <span>Add Context…</span>
         </button>
+        
+        {/* Context pills rendered inline with the button */}
+        {attachments.map((attachment) => (
+          <div
+            key={attachment.id}
+            className={styles.attachedFilePill}
+            role="listitem"
+            aria-label={`Attached file: ${attachment.name}`}
+          >
+            <span className={styles.fileName}>{attachment.name}</span>
+            <button
+              className={styles.removeButton}
+              onClick={() => handleRemoveAttachment(attachment.id)}
+              aria-label={`Remove ${attachment.name}`}
+              title="Remove attachment"
+            >
+              <XIcon className={styles.removeIcon} />
+            </button>
+          </div>
+        ))}
       </div>
       
       {/* Center - Text input (positioned to span full width) */}
-      <div className={styles.inputContainer}>
+      <div 
+        className={attachments.length === 0 ? styles.inputContainer : ""} 
+        style={attachments.length > 0 ? inputContainerDynamic : {}}
+      >
         <textarea
           ref={textareaRef}
           className={styles.textInput}
@@ -434,7 +566,7 @@ const MessageInputArea = ({
       </div>
       
       {/* Right group - Dropdown and send button (positioned at bottom right) */}
-      <div className={styles.rightGroup}>
+      <div ref={rightGroupRef} className={styles.rightGroup}>
         <div ref={dropdownRef} className={styles.dropdown}>
           <button
             className={styles.dropdownButton}
