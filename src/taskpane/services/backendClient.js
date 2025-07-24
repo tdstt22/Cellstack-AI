@@ -205,50 +205,94 @@ class BackendClient {
   //   });
   // }
 
+  // // Simple EventSource-based streaming as per ai.spec.md
+  // streamMessageSimple(message, onMessage, onDone, onError) {
+  //   return new Promise((resolve, reject) => {
+  //     // 1. Prepare for a new request
+  //     const prompt = encodeURIComponent(message);
+
+  //     // // Use direct backend URL for simple streaming endpoint (not proxied)
+  //     // const backendUrl = process.env.NODE_ENV === 'production'
+  //     //   ? (process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001')
+  //     //   : 'https://localhost:8081';
+  //     const streamUrl = `${this.baseUrl}/chat?prompt=${prompt}`;
+      
+  //     console.log('Starting simple EventSource stream:', streamUrl);
+
+  //     // 2. Create an EventSource instance
+  //     const eventSource = new EventSource(streamUrl);
+
+  //     // 3. Handle incoming messages
+  //     eventSource.onmessage = (e) => {
+  //       console.log('EventSource message received:', e.data);
+  //       if (onMessage) {
+  //         onMessage(e.data);
+  //       }
+  //     };
+
+  //     // 4. Listen for the custom 'done' event
+  //     eventSource.addEventListener('done', (e) => {
+  //       console.log('EventSource done event received:', e.data);
+  //       eventSource.close();
+  //       if (onDone) {
+  //         onDone();
+  //       }
+  //       resolve();
+  //     });
+
+  //     // 5. Handle errors
+  //     eventSource.onerror = (err) => {
+  //       console.error('EventSource error:', err);
+  //       eventSource.close();
+  //       if (onError) {
+  //         onError(err);
+  //       }
+  //       reject(err);
+  //     };
+  //   });
+  // }
+  
   // Simple EventSource-based streaming as per ai.spec.md
   streamMessageSimple(message, onMessage, onDone, onError) {
     return new Promise((resolve, reject) => {
-      // 1. Prepare for a new request
-      const prompt = encodeURIComponent(message);
+      const runFetch = async () => {
+        // 1. Prepare for a new request
+        const prompt = encodeURIComponent(message);
 
-      // // Use direct backend URL for simple streaming endpoint (not proxied)
-      // const backendUrl = process.env.NODE_ENV === 'production' 
-      //   ? (process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001')
-      //   : 'https://localhost:8081';     
-      const streamUrl = `${this.baseUrl}/chat?prompt=${prompt}`;
+        // // Use direct backend URL for simple streaming endpoint (not proxied)
+        // const backendUrl = process.env.NODE_ENV === 'production' 
+        //   ? (process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001')
+        //   : 'https://localhost:8081';     
+        const streamUrl = `${this.baseUrl}/chat?prompt=${prompt}`;
+        
+        console.log('Starting simple EventSource stream:', streamUrl);
       
-      console.log('Starting simple EventSource stream:', streamUrl);
+        // 2. Make the fetch request and get the reader
+        const res = await fetch(streamUrl);
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
 
-      // 2. Create an EventSource instance
-      const eventSource = new EventSource(streamUrl);
+        if (!reader) return;
 
-      // 3. Handle incoming messages
-      eventSource.onmessage = (e) => {
-        console.log('EventSource message received:', e.data);
-        if (onMessage) {
-          onMessage(e.data);
+        // 3. Read the stream in a loop
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) {
+            onDone();
+            resolve();
+            break; // Exit loop when stream is finished
+          }
+          if (value) {
+            const chunk = decoder.decode(value, { stream: true });
+            console.log('Chunk message received:', chunk);
+            onMessage(chunk);
+          }
         }
-      };
-
-      // 4. Listen for the custom 'done' event
-      eventSource.addEventListener('done', (e) => {
-        console.log('EventSource done event received:', e.data);
-        eventSource.close();
-        if (onDone) {
-          onDone();
-        }
-        resolve();
-      });
-
-      // 5. Handle errors
-      eventSource.onerror = (err) => {
-        console.error('EventSource error:', err);
-        eventSource.close();
-        if (onError) {
-          onError(err);
-        }
-        reject(err);
-      };
+      }
+      runFetch().catch(error => {
+        console.log('RunFetch error', error);
+        reject(error);
+      })
     });
   }
 

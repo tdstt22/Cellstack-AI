@@ -108,13 +108,6 @@ module.exports = async (env, options) => {
       port: process.env.npm_package_config_dev_server_port || 3000,
       compress: false,
       proxy: [
-        // {
-        //   context: ['/api'],
-        //   target: `http://localhost:${process.env.BACKEND_PORT || 3001}`,
-        //   secure: false,
-        //   changeOrigin: true,
-        //   logLevel: 'debug'
-        // },
         {
           context: ['/chat', '/history', '/test-sse', '/test-ai', '/test-ai-stream', '/api'],
           target: `http://localhost:${process.env.BACKEND_PORT || 3001}`,

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { makeStyles } from "@fluentui/react-components";
 import { colors, spacing, typography } from "../styles/theme";
+import ReactMarkdown from "react-markdown";
 
 const useStyles = makeStyles({
   // AI message text styling - right-aligned without container
@@ -12,9 +13,53 @@ const useStyles = makeStyles({
     textAlign: "left",
     lineHeight: typography.lineHeight.normal, // 1.4
     marginBottom: spacing.xl, // 24px
-    whiteSpace: "pre-wrap", // Preserve line breaks and spaces
     wordBreak: "break-word", // Break long words if needed
     padding: "0 16px 0 28px", // Align text start with UserMessage text (16+6+6=28px from left)
+    
+    // Markdown-specific styling
+    "& p": {
+      margin: "0 0 8px 0",
+      "&:last-child": {
+        marginBottom: 0,
+      },
+    },
+    "& h1, & h2, & h3, & h4, & h5, & h6": {
+      margin: "16px 0 8px 0",
+      "&:first-child": {
+        marginTop: 0,
+      },
+    },
+    "& ul, & ol": {
+      margin: "8px 0",
+      paddingLeft: "20px",
+    },
+    "& li": {
+      marginBottom: "4px",
+    },
+    "& code": {
+      backgroundColor: "#f5f5f5",
+      padding: "2px 4px",
+      borderRadius: "3px",
+      fontFamily: "Monaco, Consolas, 'Courier New', monospace",
+      fontSize: "11px",
+    },
+    "& pre": {
+      backgroundColor: "#f5f5f5",
+      padding: "12px",
+      borderRadius: "6px",
+      overflow: "auto",
+      margin: "8px 0",
+      "& code": {
+        backgroundColor: "transparent",
+        padding: 0,
+      },
+    },
+    "& blockquote": {
+      borderLeft: "3px solid #ddd",
+      paddingLeft: "12px",
+      margin: "8px 0",
+      fontStyle: "italic",
+    },
   },
 });
 
@@ -27,7 +72,7 @@ const AIMessage = ({ message, timestamp }) => {
       role="article"
       aria-label="AI response"
     >
-      {message}
+      <ReactMarkdown>{message}</ReactMarkdown>
     </div>
   );
 };
