@@ -335,12 +335,20 @@ router.get('/chat', (req, res) => {
   // Async function to handle the streaming
   const streamResponse = async () => {
     try {
+      const userMsg = {
+        id: Date.now().toString() + "-user",
+        type: "user",
+        text: prompt,
+        timestamp: new Date().toISOString(),
+      };
+      aiService.addToHistory(userMsg);
+      messages = aiService.formatConversationHistory()
       // Create a simple message array directly for the AI API
-      const messages = [{
-        role: "user",
-        content: prompt
-      }];
-      
+      // const messages = [{
+      //   role: "user",
+      //   content: prompt
+      // }];
+
       console.log('Simple GET /chat: Creating direct AI stream for prompt:', prompt.substring(0, 50) + '...');
 
       // Create direct streaming request to Anthropic API 
@@ -366,12 +374,14 @@ Your main goal is to follow the USER's instructions at each message. Respond in 
 
       console.log('Stream created, starting to listen for events...');
       let chunkCount = 0;
+      res_buffer = '';
 
       // Stream the response in simple format
       for await (const event of stream) {
         if (event.type === "content_block_delta" && event.delta && event.delta.text) {
           chunkCount++;
           const chunk = event.delta.text;
+          res_buffer += chunk;
           res.write(chunk)
         }
       }
@@ -388,6 +398,15 @@ Your main goal is to follow the USER's instructions at each message. Respond in 
       res.write('Sorry, I encountered an error. Please try again.');
     } finally {
       // Always send completion signal
+      console.log("LLM Reponse: ", res_buffer);
+
+      const aiMsg = {
+        id: Date.now().toString() + "-ai", // Change to UUID
+        type: "ai",
+        text: res_buffer,
+        timestamp: new Date().toISOString(),
+      };
+      aiService.addToHistory(aiMsg);
       res.end();
     }
   };
