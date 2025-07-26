@@ -47,3 +47,59 @@ export async function editCells(cells, data) {
     return "Error: " + error;
   }
 }
+
+/**
+ * Execute a tool call from the AI agent
+ * @param {Object} toolCall - Tool call object with id, name, and input
+ * @returns {Promise<Object>} - Tool result with tool_use_id and content
+ */
+export async function executeToolCall(toolCall) {
+  console.log('Executing tool call:', toolCall.name, 'with input:', toolCall.input);
+  
+  try {
+    let result;
+    
+    switch (toolCall.name) {
+      case 'viewCells':
+        result = await viewCells(toolCall.input.cells);
+        break;
+        
+      case 'editCells':
+        result = await editCells(toolCall.input.cells, toolCall.input.data);
+        break;
+        
+      default:
+        throw new Error(`Unknown tool: ${toolCall.name}`);
+    }
+    
+    // Format result for Anthropic API
+    return {
+      tool_use_id: toolCall.id,
+      content: typeof result === 'string' ? result : JSON.stringify(result)
+    };
+    
+  } catch (error) {
+    console.error(`Error executing tool ${toolCall.name}:`, error);
+    
+    return {
+      tool_use_id: toolCall.id,
+      content: `Error executing ${toolCall.name}: ${error.message}`
+    };
+  }
+}
+
+/**
+ * Execute multiple tool calls and return results
+ * @param {Array} toolCalls - Array of tool call objects
+ * @returns {Promise<Array>} - Array of tool results
+ */
+export async function executeToolCalls(toolCalls) {
+  const results = [];
+  
+  for (const toolCall of toolCalls) {
+    const result = await executeToolCall(toolCall);
+    results.push(result);
+  }
+  
+  return results;
+}

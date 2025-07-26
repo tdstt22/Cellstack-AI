@@ -1,0 +1,40 @@
+[
+  {
+    "name": "viewCells",
+    "description": "Read the values of cells within a specified range in the active Excel worksheet. Use this tool to view current spreadsheet data before making changes or to understand the spreadsheet structure.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "cells": {
+          "type": "string",
+          "description": "Cell range to read in A1 notation (e.g., 'A1', 'A1:C3', 'B2:D5'). Can be a single cell or a range of cells."
+        }
+      },
+      "required": ["cells"]
+    }
+  },
+  {
+    "name": "editCells",
+    "description": "Update the values of cells within a specified range in the active Excel worksheet. Use this tool to modify spreadsheet data, enter formulas, or update existing values.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "cells": {
+          "type": "string",
+          "description": "Cell range to update in A1 notation (e.g., 'A1', 'A1:C3', 'B2:D5'). The range must match the dimensions of the data array."
+        },
+        "data": {
+          "type": "array",
+          "description": "2D array of values to write to the specified cell range. For a single cell, use [[value]]. For multiple cells, each sub-array represents a row of values.",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": ["string", "number", "boolean", "null"]
+            }
+          }
+        }
+      },
+      "required": ["cells", "data"]
+    }
+  }
+]

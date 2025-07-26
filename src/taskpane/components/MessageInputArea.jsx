@@ -316,6 +316,7 @@ const XIcon = ({ className }) => (
 
 const MessageInputArea = ({ 
   onSendMessage, 
+  onActionChange,
   disabled = false, 
   placeholder = "Ask Rexcel",
   defaultAction = "Ask" 
@@ -336,6 +337,13 @@ const MessageInputArea = ({
 
   const actions = ["Ask", "Agent"];
   const canSend = inputValue.trim().length > 0 && !disabled;
+
+  // Update selected action when defaultAction prop changes
+  useEffect(() => {
+    if (defaultAction && defaultAction !== selectedAction) {
+      setSelectedAction(defaultAction);
+    }
+  }, [defaultAction, selectedAction]);
 
   // Dynamic input container style when context pills are present
   const inputContainerDynamic = {
@@ -462,8 +470,8 @@ const MessageInputArea = ({
     if (trimmedMessage && onSendMessage) {
       onSendMessage({
         message: trimmedMessage,
-        action: selectedAction,
-        attachments: attachments,
+        // action: selectedAction,
+        // attachments: attachments,
       });
       setInputValue("");
       setAttachments([]); // Clear context pills after sending message
@@ -483,6 +491,11 @@ const MessageInputArea = ({
   const handleActionSelect = (action) => {
     setSelectedAction(action);
     setIsDropdownOpen(false);
+    
+    // Notify parent component about action change
+    if (onActionChange) {
+      onActionChange(action);
+    }
   };
 
   const handleAddContext = () => {

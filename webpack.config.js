@@ -109,7 +109,7 @@ module.exports = async (env, options) => {
       compress: false,
       proxy: [
         {
-          context: ['/chat', '/history', '/test-sse', '/test-ai', '/test-ai-stream', '/api'],
+          context: ['/chat', '/history', '/test-sse', '/test-ai', '/test-ai-stream', '/api', '/agentv1', '/test-post'],
           target: `http://localhost:${process.env.BACKEND_PORT || 3001}`,
           secure: false,
           changeOrigin: true,

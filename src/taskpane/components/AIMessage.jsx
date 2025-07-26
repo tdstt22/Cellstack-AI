@@ -1,9 +1,17 @@
 import * as React from "react";
 import { makeStyles } from "@fluentui/react-components";
 import { colors, spacing, typography } from "../styles/theme";
-import ReactMarkdown from "react-markdown";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import ToolCallIndicator from "./ToolCallIndicator";
 
 const useStyles = makeStyles({
+  // AI message container
+  messageContainer: {
+    marginBottom: spacing.xl, // 24px
+    padding: "0 16px 0 28px", // Align text start with UserMessage text (16+6+6=28px from left)
+  },
+  
   // AI message text styling - right-aligned without container
   messageText: {
     fontFamily: typography.fontFamily,
@@ -12,9 +20,7 @@ const useStyles = makeStyles({
     color: colors.textSecondary, // #555555
     textAlign: "left",
     lineHeight: typography.lineHeight.normal, // 1.4
-    marginBottom: spacing.xl, // 24px
     wordBreak: "break-word", // Break long words if needed
-    padding: "0 16px 0 28px", // Align text start with UserMessage text (16+6+6=28px from left)
     
     // Markdown-specific styling
     "& p": {
@@ -61,18 +67,55 @@ const useStyles = makeStyles({
       fontStyle: "italic",
     },
   },
+  
+  // Tool calls section
+  toolCallsSection: {
+    marginTop: spacing.md, // 12px
+    marginBottom: spacing.md, // 12px
+  },
+  
+  // Streaming indicator
+  streamingIndicator: {
+    color: colors.textSecondary,
+    fontSize: "11px",
+    fontStyle: "italic",
+    marginTop: spacing.xs, // 4px
+    opacity: 0.7,
+  },
 });
 
-const AIMessage = ({ message, timestamp }) => {
+const AIMessage = ({ message, timestamp, toolCalls, isStreaming }) => {
   const styles = useStyles();
 
   return (
     <div 
-      className={styles.messageText}
+      className={styles.messageContainer}
       role="article"
       aria-label="AI response"
     >
-      <ReactMarkdown>{message}</ReactMarkdown>
+      {/* Tool calls section - show if there are any tool calls */}
+      {toolCalls && toolCalls.length > 0 && (
+        <div className={styles.toolCallsSection}>
+          {toolCalls.map((toolCall) => (
+            <ToolCallIndicator 
+              key={toolCall.id} 
+              toolCall={toolCall} 
+            />
+          ))}
+        </div>
+      )}
+      
+      {/* AI response text */}
+      {message && (
+        <div className={styles.messageText}>
+          <Markdown remarkPlugins={[remarkGfm]}>{message}</Markdown>
+          {isStreaming && (
+            <div className={styles.streamingIndicator}>
+              AI is thinking...
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

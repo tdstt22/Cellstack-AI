@@ -51,6 +51,8 @@ const ConversationHistory = ({ messages = [] }) => {
             <AIMessage 
               message={message.text}
               timestamp={message.timestamp}
+              toolCalls={message.toolCalls}
+              isStreaming={message.isStreaming}
             />
           )}
         </div>

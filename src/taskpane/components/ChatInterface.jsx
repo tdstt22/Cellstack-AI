@@ -7,6 +7,7 @@ import EmptyState from "./EmptyState";
 import ConversationHistory from "./ConversationHistory";
 import MessageInputArea from "./MessageInputArea";
 import backendClient from "../services/backendClient";
+import { executeToolCalls } from "../services/aiTools";
 
 const useStyles = makeStyles({
   chatContainer: {
@@ -23,12 +24,299 @@ const ChatInterface = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState([]);
   const [streamingMessageId, setStreamingMessageId] = useState(null);
+  const [isAgentMode, setIsAgentMode] = useState(false); // Default to simple chat mode
+  const [currentToolCalls, setCurrentToolCalls] = useState([]);
   
   // Generate unique IDs to avoid React key conflicts
   const generateUniqueId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+  // Handle action change from MessageInputArea dropdown
+  const handleActionChange = (action) => {
+    const newIsAgentMode = action === "Agent";
+    setIsAgentMode(newIsAgentMode);
+    console.log("Action changed to:", action, "Agent mode:", newIsAgentMode);
+  };
+
+  // Handle agent non-streaming
+  const handleAgentV1 = async (message) => {
+    // Original simple chat logic
+    setIsLoading(true);
+
+    try {
+      // Check if backend is available
+      const isAvailable = await backendClient.isBackendAvailable();
+      if (!isAvailable) {
+        const errorMessage = {
+          id: generateUniqueId(),
+          type: "ai",
+          text: "Backend service is not available. Please ensure the backend server is running and your API key is configured.",
+          timestamp: new Date().toISOString(),
+        };
+        setMessages(prevMessages => [...prevMessages, errorMessage]);
+        return;
+      }
+
+      // Create user message and add to conversation
+      const userMessage = {
+        id: generateUniqueId(),
+        type: "user",
+        text: message,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Add user message to conversation
+      setMessages(prevMessages => [...prevMessages, userMessage]);
+
+      let currentAIMessage = null;
+      const aiMessageId = generateUniqueId();
+
+      // Create initial AI message for streaming
+      currentAIMessage = {
+        id: aiMessageId,
+        type: "ai",
+        text: "",
+        timestamp: new Date().toISOString(),
+        isStreaming: true
+      };
+
+      setStreamingMessageId(aiMessageId);
+      setMessages(prevMessages => [...prevMessages, currentAIMessage]);
+
+      const aimessage = await backendClient.sendMessage(message);
+
+      setMessages(prevMessages => 
+        prevMessages.map(msg => 
+          msg.id === aiMessageId 
+            ? { ...msg, text: aimessage, isStreaming: false }
+            : msg
+        )
+      )
+
+      console.log("Non-streaming agent invoke complete.")
+
+    } catch (error) {
+        console.error("Error in handleSendMessage:", error);
+        // Add error message as AI response
+        const errorMessage = {
+          id: generateUniqueId(),
+          type: "ai",
+          text: "Sorry, I encountered an unexpected error. Please try again.",
+          timestamp: new Date().toISOString(),
+          isError: true
+        };
+        
+        setMessages(prevMessages => [...prevMessages, errorMessage]);
+        setStreamingMessageId(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  // Handle agent conversation with tool calling
+  const handleAgentMessage = async (message) => {
+    console.log("Sending agent message:", message);
+    setIsLoading(true);
+
+    try {
+      // Check if backend is available
+      const isAvailable = await backendClient.isBackendAvailable();
+      if (!isAvailable) {
+        const errorMessage = {
+          id: generateUniqueId(),
+          type: "ai",
+          text: "Backend service is not available. Please ensure the backend server is running and your API key is configured.",
+          timestamp: new Date().toISOString(),
+        };
+        setMessages(prevMessages => [...prevMessages, errorMessage]);
+        return;
+      }
+
+      // Add user message to conversation
+      const userMessage = {
+        id: generateUniqueId(),
+        type: "user",
+        text: message,
+        timestamp: new Date().toISOString(),
+      };
+      setMessages(prevMessages => [...prevMessages, userMessage]);
+
+      // Start agent conversation loop
+      await runAgentConversation(message);
+
+    } catch (error) {
+      console.error("Error in agent message:", error);
+      const errorMessage = {
+        id: generateUniqueId(),
+        type: "ai",
+        text: "Sorry, I encountered an unexpected error. Please try again.",
+        timestamp: new Date().toISOString(),
+        isError: true
+      };
+      setMessages(prevMessages => [...prevMessages, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Run agent conversation loop with tool execution
+  const runAgentConversation = async (initialMessage, toolResults = null) => {
+    let currentAIMessage = null;
+    let accumulatedText = "";
+    const aiMessageId = generateUniqueId();
+    
+    // Create initial AI message for streaming
+    currentAIMessage = {
+      id: aiMessageId,
+      type: "ai",
+      text: "",
+      timestamp: new Date().toISOString(),
+      isStreaming: true,
+      toolCalls: []
+    };
+    setStreamingMessageId(aiMessageId);
+    setMessages(prevMessages => [...prevMessages, currentAIMessage]);
+
+    try {
+      const result = await backendClient.streamAgentMessage(
+        initialMessage,
+        toolResults,
+        {
+          onContentStart: () => {
+            console.log("Agent content started");
+          },
+          
+          onContentDelta: ({ text, fullText }) => {
+            accumulatedText = fullText;
+            setMessages(prevMessages => 
+              prevMessages.map(msg => 
+                msg.id === aiMessageId 
+                  ? { ...msg, text: accumulatedText }
+                  : msg
+              )
+            );
+          },
+          
+          onToolCallStart: ({ toolCall }) => {
+            console.log("Tool call started:", toolCall.name);
+            // Add tool call notification to message
+            setMessages(prevMessages => 
+              prevMessages.map(msg => 
+                msg.id === aiMessageId 
+                  ? { 
+                      ...msg, 
+                      toolCalls: [...(msg.toolCalls || []), { 
+                        ...toolCall, 
+                        status: 'calling' 
+                      }]
+                    }
+                  : msg
+              )
+            );
+          },
+          
+          onToolCallComplete: ({ toolCall }) => {
+            console.log("Tool call completed:", toolCall.name);
+            setMessages(prevMessages => 
+              prevMessages.map(msg => 
+                msg.id === aiMessageId 
+                  ? { 
+                      ...msg, 
+                      toolCalls: msg.toolCalls?.map(tc => 
+                        tc.id === toolCall.id 
+                          ? { ...tc, status: 'ready_to_execute' }
+                          : tc
+                      )
+                    }
+                  : msg
+              )
+            );
+          },
+          
+          onMessageComplete: ({ content, toolCalls, requiresToolExecution }) => {
+            console.log("Agent message completed, requires tools:", requiresToolExecution);
+            setMessages(prevMessages => 
+              prevMessages.map(msg => 
+                msg.id === aiMessageId 
+                  ? { ...msg, isStreaming: false, text: content }
+                  : msg
+              )
+            );
+            setStreamingMessageId(null);
+          },
+          
+          onError: ({ error }) => {
+            console.error("Agent stream error:", error);
+            setMessages(prevMessages => 
+              prevMessages.map(msg => 
+                msg.id === aiMessageId 
+                  ? { ...msg, isStreaming: false, text: "Error: " + error, isError: true }
+                  : msg
+              )
+            );
+            setStreamingMessageId(null);
+          }
+        }
+      );
+
+      // Handle tool execution if required
+      if (!result.completed && result.toolCalls) {
+        console.log("Executing tools:", result.toolCalls.length);
+        
+        // Update UI to show tool execution in progress
+        setMessages(prevMessages => 
+          prevMessages.map(msg => 
+            msg.id === aiMessageId 
+              ? { 
+                  ...msg, 
+                  toolCalls: result.toolCalls.map(tc => ({ ...tc, status: 'executing' }))
+                }
+              : msg
+          )
+        );
+
+        // Execute tools
+        const toolResults = await executeToolCalls(result.toolCalls);
+        console.log("Tool execution results:", toolResults);
+
+        // Update UI to show tool execution completed
+        setMessages(prevMessages => 
+          prevMessages.map(msg => 
+            msg.id === aiMessageId 
+              ? { 
+                  ...msg, 
+                  toolCalls: result.toolCalls.map(tc => ({ ...tc, status: 'completed' }))
+                }
+              : msg
+          )
+        );
+
+        // Continue agent conversation with tool results
+        await runAgentConversation("", toolResults);
+      }
+
+    } catch (error) {
+      console.error("Error in agent conversation:", error);
+      setMessages(prevMessages => 
+        prevMessages.map(msg => 
+          msg.id === aiMessageId 
+            ? { ...msg, isStreaming: false, text: "Error: " + error.message, isError: true }
+            : msg
+        )
+      );
+      setStreamingMessageId(null);
+    }
+  };
+
   const handleSendMessage = async ({ message, action, attachments }) => {
     console.log("Sending message:", { message, action, attachments });
+    
+    // Choose between agent mode and simple chat mode
+    if (isAgentMode) {
+      await handleAgentV1(message);
+      return;
+    }
+    
+    // Original simple chat logic
     setIsLoading(true);
 
     try {
@@ -165,8 +453,10 @@ const ChatInterface = () => {
       {/* Section 3: Message Input Area (floating card with integrated context) */}
       <MessageInputArea 
         onSendMessage={handleSendMessage}
+        onActionChange={handleActionChange}
         disabled={isLoading}
         placeholder={isLoading ? (streamingMessageId ? "AI is responding..." : "AI is thinking...") : "Ask Rexcel"}
+        defaultAction={isAgentMode ? "Agent" : "Ask"}
       />
     </div>
   );

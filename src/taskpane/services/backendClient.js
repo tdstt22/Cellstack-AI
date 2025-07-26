@@ -60,23 +60,23 @@ class BackendClient {
   // Non-streaming chat request (fallback)
   async sendMessage(message, context = null, action = null) {
     try {
-      const response = await fetch(`${this.baseUrl}/api/chat`, {
+      console.log('Sending POST request with message: ', message);
+      const response_obj = await fetch(`${this.baseUrl}/agentv1`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           message,
-          context,
-          action
-        })
+        }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Chat request failed: ${response.status}`);
+      if (!response_obj.ok) {
+        throw new Error(`Chat request failed: ${response_obj.status}`);
       }
-
-      return await response.json();
+      const { success, response, model } = await response_obj.json();
+      console.log("Received msg: ", response);
+      return response;
     } catch (error) {
       console.error('Failed to send message:', error);
       throw error;
@@ -294,6 +294,132 @@ class BackendClient {
         reject(error);
       })
     });
+  }
+
+  // Stream agent message with tool calling support
+  async streamAgentMessage(message, toolResults = null, handlers = {}) {
+    return new Promise((resolve, reject) => {
+      const runFetch = async () => {
+        console.log('Starting agent stream to:', `${this.baseUrl}/chatAgent`);
+        
+        // Prepare request body
+        const requestBody = {
+          message,
+          ...(toolResults && { toolResults })
+        };
+
+        // Make POST request to agent endpoint
+        const response = await fetch(`${this.baseUrl}/chatAgent`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+          throw new Error(`Agent request failed: ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        if (!reader) return;
+
+        // Extract handlers with default no-op functions
+        const {
+          onContentStart = () => {},
+          onContentDelta = () => {},
+          onToolCallStart = () => {},
+          onToolCallComplete = () => {},
+          onMessageComplete = () => {},
+          onError = () => {}
+        } = handlers;
+
+        // Read the stream
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          if (value) {
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n').filter(line => line.trim());
+
+            for (const line of lines) {
+              try {
+                const event = JSON.parse(line);
+                console.log('Agent stream event received:', event.type);
+
+                switch (event.type) {
+                  case 'content_start':
+                    onContentStart();
+                    break;
+                    
+                  case 'content_delta':
+                    onContentDelta({
+                      text: event.text,
+                      fullText: event.fullText
+                    });
+                    break;
+                    
+                  case 'tool_call_start':
+                    onToolCallStart({
+                      toolCall: event.tool_call
+                    });
+                    break;
+                    
+                  case 'tool_call_complete':
+                    onToolCallComplete({
+                      toolCall: event.tool_call
+                    });
+                    break;
+                    
+                  case 'message_complete':
+                    onMessageComplete({
+                      content: event.content,
+                      toolCalls: event.tool_calls,
+                      requiresToolExecution: event.requiresToolExecution
+                    });
+                    
+                    // If tool execution is required, resolve with tool calls for frontend to handle
+                    if (event.requiresToolExecution) {
+                      resolve({
+                        completed: false,
+                        toolCalls: event.tool_calls,
+                        content: event.content
+                      });
+                    } else {
+                      resolve({
+                        completed: true,
+                        content: event.content
+                      });
+                    }
+                    return;
+                    
+                  case 'error':
+                    onError({ error: event.error });
+                    reject(new Error(event.error));
+                    return;
+                }
+              } catch (parseError) {
+                console.error('Failed to parse agent stream event:', parseError, 'Line:', line);
+              }
+            }
+          }
+        }
+      };
+
+      runFetch().catch(error => {
+        console.error('Agent stream error:', error);
+        reject(error);
+      });
+    });
+  }
+
+  // Execute tool and continue agent conversation
+  async continueAgentConversation(toolResults, handlers = {}) {
+    // Use empty message since we're just sending tool results
+    return this.streamAgentMessage("", toolResults, handlers);
   }
 
   // Check if backend is available
