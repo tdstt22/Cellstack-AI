@@ -1,3 +1,71 @@
+import { z } from "zod";
+import { tool } from "@langchain/core/tools";
+
+const viewCellsSchema = z.object({
+  cells: z.string().describe("Cell range to read in A1 notation (e.g., 'A1', 'A1:C3', 'B2:D5'). Can be a single cell or a range of cells."),
+})
+
+const editCellsSchema = z.object({
+  cells: z.string().describe("Cell range to edit in A1 notation (e.g., 'A1', 'A1:C3', 'B2:D5'). Can be a single cell or a range of cells."),
+  data: z.string(). describe("JSON formatted data for the cells that need to be edited. The JSON data should have one element called `data` which is a 2D array representing the data. For example, { data: [ [ 1, 2, 3 ], [ 4, 5, 6 ], [ 7, 8, 9 ] ] }"),
+})
+
+export const viewCellsTool = tool(
+  async (input) => {
+    try {
+      const result = await Excel.run(async (context) => {
+        const sheet = context.workbook.worksheets.getActiveWorksheet();
+        const range = sheet.getRange(input.cells);
+        range.load('address')
+        range.load('values')
+        await context.sync();
+        // const jsonValues = range.values;
+        console.log(`Viewing range ${range.address} with values `, JSON.stringify(range.values, null, 4));
+        // return {
+        //   address: range.address,
+        //   values: range.values,
+        // }
+
+        return JSON.stringify(range.values, null, 4);
+      });
+      return result;
+    } catch (error) {
+      console.log("Error: " + error);
+      return "Error: " + error;
+    }
+  },
+  {
+    name: "view_cells",
+    description: "Read the values of cells within a specified range in the active Excel worksheet. Use this tool to view current spreadsheet data before making changes or to understand the spreadsheet structure.",
+    schema: viewCellsSchema,
+  }
+)
+
+export const editCellsTool = tool(
+  async (input) => {
+    try {
+      await Excel.run(async (context) => {
+        const sheet = context.workbook.worksheets.getActiveWorksheet();
+        const range = sheet.getRange(input.cells);
+        const json_data = JSON.parse(input.data);
+        range.values = json_data.data;
+        // range.format.autofitColumns();
+        await context.sync();
+      });
+      console.log(`Updated cells ${input.cells} with values ${input.data}`);
+      return `Successfully updated cells ${input.cells}`
+    } catch (error) {
+      console.log("Error: " + error);
+      return "Error: " + error;
+    }
+  },
+  {
+    name: "edit_cells",
+    description: "Update the values of cells within a specified range in the active Excel worksheet. Use this tool to modify spreadsheet data, enter formulas, or update existing values.",
+    schema: editCellsSchema,
+  }
+)
+
 /** 
 * Reads value of the cells within the specified range
 * @param {string} cells - Cell range to read the values in A1 notation (i.e "A1:C2")

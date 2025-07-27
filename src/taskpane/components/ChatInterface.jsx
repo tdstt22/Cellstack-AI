@@ -7,7 +7,8 @@ import EmptyState from "./EmptyState";
 import ConversationHistory from "./ConversationHistory";
 import MessageInputArea from "./MessageInputArea";
 import backendClient from "../services/backendClient";
-import { executeToolCalls } from "../services/aiTools";
+import { executeToolCalls, viewCellsTool } from "../services/aiTools";
+import llmClient from "../services/llmClient";
 
 const useStyles = makeStyles({
   chatContainer: {
@@ -82,7 +83,9 @@ const ChatInterface = () => {
       setStreamingMessageId(aiMessageId);
       setMessages(prevMessages => [...prevMessages, currentAIMessage]);
 
-      const aimessage = await backendClient.sendMessage(message);
+      // const aimessage = await backendClient.sendMessage(message);
+      // const aimessage = await llmClient.chatClaude(message);
+      const aimessage = await llmClient.chatAgent(message);
 
       setMessages(prevMessages => 
         prevMessages.map(msg => 
