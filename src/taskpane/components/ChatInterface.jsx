@@ -7,7 +7,7 @@ import EmptyState from "./EmptyState";
 import ConversationHistory from "./ConversationHistory";
 import MessageInputArea from "./MessageInputArea";
 import backendClient from "../services/backendClient";
-import { executeToolCalls, viewCellsTool } from "../services/aiTools";
+import { executeToolCalls, viewCellsTool, editCellsTool } from "../services/aiTools";
 import llmClient from "../services/llmClient";
 
 const useStyles = makeStyles({
@@ -86,6 +86,9 @@ const ChatInterface = () => {
       // const aimessage = await backendClient.sendMessage(message);
       // const aimessage = await llmClient.chatClaude(message);
       const aimessage = await llmClient.chatAgent(message);
+      // viewCellsTool.invoke({ cells: 'C3:G5' });
+      // editCellsTool.invoke({data: `{"K1":{"value":"hello world","format":{"fill":{"color":"#FF0000"},"font":{"color":"#000000","bold":true,"name":"Avenir","size":12}}}}`})
+      // const aimessage = "hello world";
 
       setMessages(prevMessages => 
         prevMessages.map(msg => 

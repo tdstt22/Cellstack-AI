@@ -1,7 +1,7 @@
 [
   {
-    "name": "viewCells",
-    "description": "Read the values of cells within a specified range in the active Excel worksheet. Use this tool to view current spreadsheet data before making changes or to understand the spreadsheet structure.",
+    "name": "view_cells",
+    "description": "View the cells within a specified range in the active Excel worksheet. This includes the value, style, and other cell properties. Use this tool to view current spreadsheet data before making changes or to understand the spreadsheet structure.",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -14,27 +14,17 @@
     }
   },
   {
-    "name": "editCells",
-    "description": "Update the values of cells within a specified range in the active Excel worksheet. Use this tool to modify spreadsheet data, enter formulas, or update existing values.",
+    "name": "edit_cells",
+    "description": "Update the properties of cells within a specified range in the active Excel worksheet. Use this tool to modify spreadsheet cell data including styles and format.",
     "input_schema": {
       "type": "object",
       "properties": {
-        "cells": {
-          "type": "string",
-          "description": "Cell range to update in A1 notation (e.g., 'A1', 'A1:C3', 'B2:D5'). The range must match the dimensions of the data array."
-        },
         "data": {
-          "type": "array",
-          "description": "2D array of values to write to the specified cell range. For a single cell, use [[value]]. For multiple cells, each sub-array represents a row of values.",
-          "items": {
-            "type": "array",
-            "items": {
-              "type": ["string", "number", "boolean", "null"]
-            }
-          }
+          "type": "string",
+          "description": "JSON formatted data for the cells that need to be edited. Only supply data for the cells that need to be updated. DO NOT provide data for cells that remain the same.\nThe JSON data should have keys being the cell coordinates in A1 Notation (such as \"A1\" or \"B3\"). \nThe values should be a dictionary containing the properties of the cell. The cell properties are as follows:\n{\n  \"value\": Value of the cell (String/Number/Boolean)\n  \"format\": {\n    \"fill\": {\n      \"color\": Color in Hex Value (String)\n    },\n    \"font\": {\n      \"color\": Color in Hex Value (String)\n      \"bold\": true or false (Boolean)\n      \"name\": Font name (String)\n      \"size\": Font size (Integer)\n    }\n  }\n}\n\nHere is an example of a properly formatted data:\n{\n  \"A1\": {\n    \"value\": \"Hello\"\n    \"format\": {\n      \"fill\": {\n        \"color\": \"#FF0000\",\n      },\n      \"font\": {\n        \"color\": \"#000000\",\n        \"bold\": true,\n        \"name\": \"Avenir\",\n        \"size\": 12,\n      }\n    }\n  }\n}\n\nIf any cell property DOES NOT need to be updated, leave it out of the JSON data. For example, if you want to update the just the fill color of A1 to red then supply to following data:\n{\n  \"A1\": {\n    \"format\": {\n      \"fill\": {\n        \"color\": \"#FF0000\",\n      }\n    }\n  }\n}\n"
         }
       },
-      "required": ["cells", "data"]
+      "required": ["data"]
     }
   }
 ]

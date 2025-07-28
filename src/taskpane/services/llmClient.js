@@ -25,7 +25,7 @@ class LLMClient {
   initLangchain(){
     this.model = new ChatAnthropic({
       model: 'claude-sonnet-4-20250514',
-      maxTokens: 1024,
+      maxTokens: 4096,
       temperature: 0,
       maxRetries: 3,
       apiKey: process.env.ANTHROPIC_API_KEY,
@@ -78,16 +78,41 @@ Your main goal is to follow the USER's instructions at each message. Respond in 
     });
 
     // Now it's time to use!
-    const agentFinalState = await agent.invoke(
-      { messages: [{ role: "user", content: message }] },
-      {
-        recursionLimit: 50,
-      },
-      // { configurable: { thread_id: "42", recursion_limit: 50} },
-    );
+    // const agentFinalState = await agent.invoke(
+    //   { messages: [{ role: "user", content: message }] },
+    //   {
+    //     recursionLimit: 50,
+    //   },
+    //   // { configurable: { thread_id: "42", recursion_limit: 50} },
+    // );
 
-    console.log("Returning response from LangChain: ", agentFinalState.messages[agentFinalState.messages.length - 1].content);
-    return agentFinalState.messages[agentFinalState.messages.length - 1].content;
+    let stream = await agent.stream({ messages: [{ role: "user", content: message }] }, {
+      recursionLimit: 100,
+      streamMode: "values",
+    });
+    
+    let final_msg = null;
+    for await (
+      const { messages } of stream
+    ) {
+      let msg = messages[messages?.length - 1];
+      if (msg?.content) {
+        console.log("Msg Content...");
+        console.log(msg.content);
+        final_msg = msg.content
+      } else if (msg?.tool_calls?.length > 0) {
+        console.log("Tools...");
+        console.log(msg.tool_calls);
+      } else {
+        console.log("Else...");
+        console.log(msg);
+      }
+      console.log("-----\n");
+    }
+
+    // console.log("Returning response from LangChain: ", messages[agentFinalState.messages.length - 1].content);
+    console.log("Returning response from LangChain: ", final_msg);
+    return final_msg;
   }
 }
 
