@@ -318,7 +318,7 @@ const MessageInputArea = ({
   onSendMessage, 
   onActionChange,
   disabled = false, 
-  placeholder = "Ask Rexcel",
+  placeholder = "Edit your spreadsheet in agent mode",
   defaultAction = "Ask" 
 }) => {
   const styles = useStyles();

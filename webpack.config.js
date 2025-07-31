@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 
-require('dotenv').config();
+const Dotenv = require('dotenv-webpack');
 
 const devCerts = require("office-addin-dev-certs");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
@@ -90,11 +90,16 @@ module.exports = async (env, options) => {
       new webpack.ProvidePlugin({
         Promise: ["es6-promise", "Promise"],
       }),
-      new webpack.DefinePlugin({
-        'process.env.ANTHROPIC_API_KEY': JSON.stringify(process.env.ANTHROPIC_API_KEY),
-        'process.env.DEV_SERVER_PORT': JSON.stringify(process.env.DEV_SERVER_PORT),
-        'process.env.REACT_APP_API_BASE_URL': JSON.stringify(process.env.REACT_APP_API_BASE_URL),
-      }),
+      // new webpack.DefinePlugin({
+      //   'process.env.ANTHROPIC_API_KEY': JSON.stringify(process.env.ANTHROPIC_API_KEY),
+      //   'process.env.DEV_SERVER_PORT': JSON.stringify(process.env.DEV_SERVER_PORT),
+      //   'process.env.REACT_APP_API_BASE_URL': JSON.stringify(process.env.REACT_APP_API_BASE_URL),
+      //   'process.env.LANGSMITH_TRACING': JSON.stringify(process.env.LANGSMITH_TRACING),
+      //   'process.env.LANGSMITH_ENDPOINT': JSON.stringify(process.env.LANGSMITH_ENDPOINT),
+      //   'process.env.LANGSMITH_API_KEY': JSON.stringify(process.env.LANGSMITH_API_KEY),
+      //   'process.env.LANGSMITH_PROJECT': JSON.stringify(process.env.LANGSMITH_PROJECT),
+      // }),
+      new Dotenv(),
     ],
     devServer: {
       hot: true,

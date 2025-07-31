@@ -5,7 +5,8 @@ const CELL_PROPERTIES = {
   address: true,
   format: {
     fill: {
-      color: true
+      color: true,
+      tintAndShade:true,
     },
     font: {
       color: true,
@@ -18,6 +19,7 @@ const CELL_PROPERTIES = {
 }
 
 const EDIT_CELL_DATA_DESCRIPTION = `JSON formatted data for the cells that need to be edited. Only supply data for the cells that need to be updated. DO NOT provide data for cells that remain the same.
+This tool is extremely expensive. Always try to minimize this tools usage and apply as many edits into a single call, instead of breaking into multiple smaller edits. Plan out all the changes you need to make before you use the edit_cells tool.
 The JSON data should have keys being the cell coordinates in A1 Notation (such as "A1" or "B3"). 
 The values should be a dictionary containing the properties of the cell. The cell properties are as follows:
 {
@@ -25,6 +27,7 @@ The values should be a dictionary containing the properties of the cell. The cel
   "format": {
     "fill": {
       "color": Color in Hex Value (String)
+      "nofill": true or false (String)
     },
     "font": {
       "color": Color in Hex Value (String)
@@ -91,6 +94,7 @@ export const viewCellsTool = tool(
         // console.log(`Values JSON ${JSON.stringify(range.valuesAsJson, null, 4)}`);
         // console.log(`Formulas ${JSON.stringify(range.formulas, null, 4)}`);
         // console.log(`rowIndex ${range.rowIndex} columnIndex ${range.columnIndex}`);
+
         // console.log(`font ${JSON.stringify(range.format, null, 4)}`);
         console.log("Running View Cells...");
 
@@ -121,6 +125,7 @@ export const viewCellsTool = tool(
               format: {
                 fill: {
                   color: cellProperties.format.fill.color,
+                  nofill: cellProperties.format.fill.tintAndShade === null ? true : false,
                 },
                 font: {
                   color: cellProperties.format.font.color,
@@ -181,6 +186,12 @@ export const editCellsTool = tool(
             
             // Update Fill
             if (json_data[key]?.format?.fill?.color !== undefined) cell.format.fill.color = json_data[key].format.fill.color;
+            if (json_data[key]?.format?.fill?.nofill === true) cell.format.fill.clear();
+
+            // Auto-fit columns
+            cell.format.autofitColumns();
+            // // Round to 2 decimal
+            // cell.numberFormat = [["0.00"]]; 
           });
           // range.values = json_data.data;
           // range.format.autofitColumns();

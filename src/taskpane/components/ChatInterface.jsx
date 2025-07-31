@@ -45,17 +45,17 @@ const ChatInterface = () => {
 
     try {
       // Check if backend is available
-      const isAvailable = await backendClient.isBackendAvailable();
-      if (!isAvailable) {
-        const errorMessage = {
-          id: generateUniqueId(),
-          type: "ai",
-          text: "Backend service is not available. Please ensure the backend server is running and your API key is configured.",
-          timestamp: new Date().toISOString(),
-        };
-        setMessages(prevMessages => [...prevMessages, errorMessage]);
-        return;
-      }
+      // const isAvailable = await backendClient.isBackendAvailable();
+      // if (!isAvailable) {
+      //   const errorMessage = {
+      //     id: generateUniqueId(),
+      //     type: "ai",
+      //     text: "Backend service is not available. Please ensure the backend server is running and your API key is configured.",
+      //     timestamp: new Date().toISOString(),
+      //   };
+      //   setMessages(prevMessages => [...prevMessages, errorMessage]);
+      //   return;
+      // }
 
       // Create user message and add to conversation
       const userMessage = {
@@ -70,6 +70,7 @@ const ChatInterface = () => {
 
       let currentAIMessage = null;
       const aiMessageId = generateUniqueId();
+      let accumulatedText = "";
 
       // Create initial AI message for streaming
       currentAIMessage = {
@@ -85,15 +86,31 @@ const ChatInterface = () => {
 
       // const aimessage = await backendClient.sendMessage(message);
       // const aimessage = await llmClient.chatClaude(message);
-      const aimessage = await llmClient.chatAgent(message);
-      // viewCellsTool.invoke({ cells: 'C3:G5' });
+      const aimessage = await llmClient.chatAgent(message,
+        // onMessage handler - receives each chunk of text
+        (chunkText) => {
+          accumulatedText = accumulatedText + "\n\n" + chunkText;
+          
+          // Update streaming message with accumulated text
+          setMessages(prevMessages =>
+            prevMessages.map(msg =>
+              msg.id === aiMessageId
+                ? { ...msg, text: accumulatedText }
+                : msg
+            )
+          );
+        }
+      );
+      // viewCellsTool.invoke({ cells: "A28" });
       // editCellsTool.invoke({data: `{"K1":{"value":"hello world","format":{"fill":{"color":"#FF0000"},"font":{"color":"#000000","bold":true,"name":"Avenir","size":12}}}}`})
       // const aimessage = "hello world";
+
+      accumulatedText = accumulatedText + "\n\n" + "---" + "\n\n" + aimessage;
 
       setMessages(prevMessages => 
         prevMessages.map(msg => 
           msg.id === aiMessageId 
-            ? { ...msg, text: aimessage, isStreaming: false }
+            ? { ...msg, text: accumulatedText, isStreaming: false }
             : msg
         )
       )
@@ -461,7 +478,7 @@ const ChatInterface = () => {
         onSendMessage={handleSendMessage}
         onActionChange={handleActionChange}
         disabled={isLoading}
-        placeholder={isLoading ? (streamingMessageId ? "AI is responding..." : "AI is thinking...") : "Ask Rexcel"}
+        placeholder={isLoading ? (streamingMessageId ? "AI is responding..." : "AI is thinking...") : "Edit your spreadsheet in agent mode"}
         defaultAction={isAgentMode ? "Agent" : "Ask"}
       />
     </div>

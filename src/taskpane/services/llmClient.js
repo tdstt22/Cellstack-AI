@@ -24,10 +24,11 @@ class LLMClient {
 
   initLangchain(){
     this.model = new ChatAnthropic({
-      model: 'claude-sonnet-4-20250514',
-      maxTokens: 4096,
+      model: "claude-sonnet-4-20250514",
+      maxTokens: 20000,
       temperature: 0,
-      maxRetries: 3,
+      maxRetries: 0,
+      timeout: 3000000,
       apiKey: process.env.ANTHROPIC_API_KEY,
     });
     this.tools = this.createTools();
@@ -65,7 +66,7 @@ Your main goal is to follow the USER's instructions at each message. Respond in 
     return res.content[0].text;
   }
 
-  async chatAgent(message) {
+  async chatAgent(message, onMessage) {
     console.log("Calling Langchain ChatAnthropic");
 
     const prompt = await generateAgentPrompt();
@@ -73,9 +74,18 @@ Your main goal is to follow the USER's instructions at each message. Respond in 
     const agent = createReactAgent({
       llm: this.model,
       tools: this.tools,
-      // checkpointSaver: agentCheckpointer,
+      // checkpointSaver: this.memory,
       stateModifier: prompt,
     });
+
+    const controller = new AbortController();
+
+    setTimeout(() => controller.abort(), 3000000);
+
+    agent.withConfig({
+      timeout: 3000000, 
+      signal: controller.signal,
+    })
 
     // Now it's time to use!
     // const agentFinalState = await agent.invoke(
@@ -86,20 +96,31 @@ Your main goal is to follow the USER's instructions at each message. Respond in 
     //   // { configurable: { thread_id: "42", recursion_limit: 50} },
     // );
 
-    let stream = await agent.stream({ messages: [{ role: "user", content: message }] }, {
-      recursionLimit: 100,
-      streamMode: "values",
-    });
-    
+    // let stream = await agent.stream({ messages: [{ role: "user", content: message }] }, {
+    //   configurable: { thread_id: "42" },
+    //   recursionLimit: 100,
+    //   streamMode: "values",
+    //   timeout: 3000000,
+    // });
+
+    let inputs = { messages: [{ role: "user", content: message }] };
     let final_msg = null;
     for await (
-      const { messages } of stream
+      const chunk of await agent.stream(inputs, {
+        streamMode: "values",
+        recursionLimit: 100,
+        signal: controller.signal,
+      })
     ) {
+      const messages = chunk["messages"];
       let msg = messages[messages?.length - 1];
       if (msg?.content) {
         console.log("Msg Content...");
         console.log(msg.content);
-        final_msg = msg.content
+        final_msg = msg.content;
+        for (const content of msg.content) {
+          if (content.type === "text") onMessage(content.text);
+        }
       } else if (msg?.tool_calls?.length > 0) {
         console.log("Tools...");
         console.log(msg.tool_calls);
@@ -109,6 +130,26 @@ Your main goal is to follow the USER's instructions at each message. Respond in 
       }
       console.log("-----\n");
     }
+    // for await (
+    //   const { messages } of stream
+    // ) {
+    //   let msg = messages[messages?.length - 1];
+    //   if (msg?.content) {
+    //     console.log("Msg Content...");
+    //     console.log(msg.content);
+    //     final_msg = msg.content;
+    //     for (const content of msg.content) {
+    //       if (content.type === "text") onMessage(content.text);
+    //     }
+    //   } else if (msg?.tool_calls?.length > 0) {
+    //     console.log("Tools...");
+    //     console.log(msg.tool_calls);
+    //   } else {
+    //     console.log("Else...");
+    //     console.log(msg);
+    //   }
+    //   console.log("-----\n");
+    // }
 
     // console.log("Returning response from LangChain: ", messages[agentFinalState.messages.length - 1].content);
     console.log("Returning response from LangChain: ", final_msg);

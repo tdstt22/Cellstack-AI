@@ -129,7 +129,7 @@ const EmptyState = () => {
   return (
     <main className={styles.container} role="main">
       <div className={styles.content}>
-        <h1 className={styles.headline}>Ask Rexcel</h1>
+        <h1 className={styles.headline}>Ask AI Copilot</h1>
         
         <p className={styles.subtext}>
           Rexcel is powered by AI, so mistakes are possible. Review output carefully before use.
