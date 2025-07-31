@@ -25,6 +25,7 @@ class LLMClient {
   initLangchain(){
     this.model = new ChatAnthropic({
       model: "claude-sonnet-4-20250514",
+      // model: "claude-3-7-sonnet-20250219",
       maxTokens: 20000,
       temperature: 0,
       maxRetries: 0,
@@ -116,7 +117,7 @@ Your main goal is to follow the USER's instructions at each message. Respond in 
       let msg = messages[messages?.length - 1];
       if (msg?.content) {
         console.log("Msg Content...");
-        console.log(msg.content);
+        // console.log(msg.content);
         final_msg = msg.content;
         for (const content of msg.content) {
           if (content.type === "text") onMessage(content.text);

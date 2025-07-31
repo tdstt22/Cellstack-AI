@@ -101,8 +101,8 @@ const ChatInterface = () => {
           );
         }
       );
-      // viewCellsTool.invoke({ cells: "A28" });
-      // editCellsTool.invoke({data: `{"K1":{"value":"hello world","format":{"fill":{"color":"#FF0000"},"font":{"color":"#000000","bold":true,"name":"Avenir","size":12}}}}`})
+      // viewCellsTool.invoke({ sheetName: "Index", cells: "C10" });
+      // editCellsTool.invoke({sheetName: "test", data: `{"K1":{"value":"hello world","format":{"fill":{"color":"#FF0000"},"font":{"color":"#000000","bold":true,"name":"Avenir","size":12}}}}`})
       // const aimessage = "hello world";
 
       accumulatedText = accumulatedText + "\n\n" + "---" + "\n\n" + aimessage;

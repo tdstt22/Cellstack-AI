@@ -67,19 +67,18 @@ If not specified, use the following:
 - Indentation: Indent supporting calculations and sub-items using spaces or the indent button
 - Alignment: Left-align text, right-align numbers, Center-align dates and column headers
 
-
 ## Layout
-- Isolate each section of the model clearly and *ALWAYS* provide space/buffer in between different components (data, assumptions, etc)
+- Unless specified by the USER, isolate the components to build required to the build the model in separate sheets
 </financial_model_format>
 
 <financial_modeling_rules>
 Follow these rules regarding financial models:
 1. Analyze the data provided by the USER in the spreadsheet and understand milestones to accomplish.
-2. Build a clear and descriptive plan of the model you are building before exceuting. Outline *ALL* the assumptions you are making clearly in the plan. Plan the layout of the spreadsheet in your thoughts without displaying it to the USER.
-3. Always start by building assumptions that will be the basis of your model. Unless specified, create assumptions at the lowest driver tree level (i.e. bottom up driver). For any of the drivers that require assumptions to perform project, make sure the assumptions are created in the assumptions section.
-4. If not stated by the USER, assumptions should be built on historical data. Make sure do display all your assumptions clearly based on the formatting guidlines.
-5. When not using fixed percentage, always provide a year-by-year assumptions in the assumptions section. When building the model, *ALWAYS* reference these assumptions created when writing the formula. *NEVER* hard-code growth rates into the formula (i.e =H12*0.02), instead build the rate (0.02) as an assumption and reference that cell in the formula.
-6. Think through the implementation carefully before building the model, ensuring all the formulas and values are entered in correctly. For calculations related to your assumptions, *ALWAYS* reference the appropriate assumption cells in your formula. Never USE hard-coded values in the formula (i.e. =A1*0.3), but instead create an assumption and reference it. Recheck the cells to make sure there is *NO* mistakes.
+2. Build a clear and descriptive plan of the model you are building before exceuting. Outline *ALL* the assumptions you are making clearly in the plan. Plan the layout of the sheets in your thoughts without displaying it to the USER.
+3. Always start by building assumptions that will be the basis of your model. Unless specified, create assumptions at the lowest driver tree level (i.e. bottom up driver). For any of the drivers that require assumptions to perform projection, make sure the assumptions are created in the assumptions section. *EVERY* assumption made need to be coupled with a "Rationale" column that explains why you made that assumption.
+4. If not stated by the USER, assumptions should be built based on historical data. Make sure do display all your assumptions clearly based on the formatting guidlines.
+5. When not using fixed percentage, always provide a year-by-year assumptions in the assumptions section. When building the model, *ALWAYS* reference these assumptions created when writing the formula. *NEVER* hard-code growth rates into the formula (i.e =Sheet1!H12*0.02), instead build the rate (0.02) as an assumption and reference that cell in the formula.
+6. Think through the implementation carefully before building the model, ensuring all the formulas and values are entered in correctly. For calculations related to your assumptions, *ALWAYS* reference the appropriate assumption cells in your formula. Never USE hard-coded values in the formula (i.e. =Sheet1!A1*0.3), but instead create an assumption and reference it. Recheck the cells to make sure there is *NO* mistakes in the formulas/values.
 7. Unless specified by the USER, format the financial models according to the description in <financial_model_format> and make sure the model is clearly readably and professional.
 8. Avoid add unfinished or unrelated components into the spreadsheet at all cost. ONLY display the relevant contents to the model. This will cost your life. 
 </financial_modeling_rules>
@@ -104,7 +103,7 @@ DO NOT provide any information about the tools or its usage to the USER at all c
 </response_format>
 
 <spreadsheet>
-You are provided the following information about the spreadsheet. This information will NOT be updated during the conversation. If you need to view specific portions of the spreadsheet, use the view_cells tool.
+You are provided the following information about the spreadsheet. The spreadsheet may contain multiple sheets. This information will NOT be updated during the conversation. If you need to view specific portions of a sheet, use the view_cells tool.
 ${range}
 </spreadsheet>
 `;
@@ -114,34 +113,49 @@ ${range}
 
 async function getUsedRange() {
   try {
-    const range = await Excel.run(async (context) => {
-      // Get the active worksheet
-      const sheet = context.workbook.worksheets.getActiveWorksheet();
-  
-      // Get the used range of the worksheet
-      const usedRange = sheet.getUsedRange();
-  
-      // Load properties of the used range, such as address, rowCount, and columnCount
-      usedRange.load(["address", "rowCount", "columnCount"]);
-  
-      // Synchronize the context to load the properties
+    const data = await Excel.run(async (context) => {
+
+      // Load all sheets
+      const worksheets = context.workbook.worksheets;
+      worksheets.load("items/name"); // Load the names of all worksheets
+
       await context.sync();
-  
-      // Log the address of the used range
-      console.log(`The used range address is: ${usedRange.address}`);
-  
-      // Log the number of rows in the used range
-      console.log(`Number of used rows: ${usedRange.rowCount}`);
-  
-      // Log the number of columns in the used range
-      console.log(`Number of used columns: ${usedRange.columnCount}`);
-      return {
-        used_range_address: usedRange.address,
-        num_used_rows: usedRange.rowCount,
-        num_used_columns: usedRange.columnCount,
+
+      // spreadsheet data
+      const spreadsheet_data = [];
+
+
+      for (const sheet of worksheets.items) {
+        // console.log("Sheet Name:", sheet.name);
+    
+        // Get the used range of the worksheet
+        const usedRange = sheet.getUsedRange();
+    
+        // Load properties of the used range, such as address, rowCount, and columnCount
+        usedRange.load(["address", "rowCount", "columnCount"]);
+    
+        // Synchronize the context to load the properties
+        await context.sync();
+    
+        // Log the address of the used range
+        // console.log(`The used range address is: ${usedRange.address}`);
+    
+        // Log the number of rows in the used range
+        // console.log(`Number of used rows: ${usedRange.rowCount}`);
+    
+        // Log the number of columns in the used range
+        // console.log(`Number of used columns: ${usedRange.columnCount}`);
+        spreadsheet_data.push({
+          sheet_name: sheet.name,
+          used_range_address: usedRange.address, // Can optimize by combining sheet_name and used_range_address
+          num_used_rows: usedRange.rowCount,
+          num_used_columns: usedRange.columnCount,
+        })
       }
+      
+      return spreadsheet_data;
     }); 
-    return JSON.stringify(range);
+    return JSON.stringify(data);
   } catch (error) {
     console.log("Error: " + error);
   }

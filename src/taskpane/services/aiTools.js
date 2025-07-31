@@ -18,8 +18,7 @@ const CELL_PROPERTIES = {
   style: true
 }
 
-const EDIT_CELL_DATA_DESCRIPTION = `JSON formatted data for the cells that need to be edited. Only supply data for the cells that need to be updated. DO NOT provide data for cells that remain the same.
-This tool is extremely expensive. Always try to minimize this tools usage and apply as many edits into a single call, instead of breaking into multiple smaller edits. Plan out all the changes you need to make before you use the edit_cells tool.
+const EDIT_CELL_DATA_DESCRIPTION = `JSON formatted data for the cells that need to be edited in sheet. Only supply data for the cells that need to be updated. DO NOT provide data for cells that remain the same.
 The JSON data should have keys being the cell coordinates in A1 Notation (such as "A1" or "B3"). 
 The values should be a dictionary containing the properties of the cell. The cell properties are as follows:
 {
@@ -69,10 +68,12 @@ If any cell property DOES NOT need to be updated, leave it out of the JSON data.
 `
 
 const viewCellsSchema = z.object({
-  cells: z.string().describe("Cell range to read in A1 notation (e.g., 'A1', 'A1:C3', 'B2:D5'). Can be a single cell or a range of cells."),
+  sheetName: z.string().describe("Name of sheet to view (e.g. 'Sheet1', 'Index', 'Output')"),
+  cells: z.string().describe("Cell range in sheetName to view in A1 notation (e.g. 'A1', 'A1:C3', 'B2:D5'). Range can be a single cell or a range of cells."),
 })
 
 const editCellsSchema = z.object({
+  sheetName: z.string().describe("Name of sheet to edit (e.g. 'Sheet1', 'Index', 'Output')"),
   data: z.string(). describe(EDIT_CELL_DATA_DESCRIPTION),
 })
 
@@ -85,7 +86,7 @@ export const viewCellsTool = tool(
   async (input) => {
     try {
       const result = await Excel.run(async (context) => {
-        const sheet = context.workbook.worksheets.getActiveWorksheet();
+        const sheet = context.workbook.worksheets.getItem(input.sheetName);
         const range = sheet.getRange(input.cells);
         range.load(['address', 'values', 'valuesAsJson', 'formulas', 'rowIndex', 'columnIndex', 'format']);
         await context.sync();
@@ -155,7 +156,7 @@ export const viewCellsTool = tool(
   },
   {
     name: "view_cells",
-    description: "View the cells within a specified range in the active Excel worksheet. This includes the value, style, and other cell properties. Use this tool to view current spreadsheet data before making changes or to understand the spreadsheet structure.",
+    description: "View the cells within a specified range in specific a sheet. This includes the value, style, and other cell properties. Use this tool to view data on a specific sheet.",
     schema: viewCellsSchema,
   }
 )
@@ -164,7 +165,8 @@ export const editCellsTool = tool(
     async (input) => {
       try {
         await Excel.run(async (context) => {
-          const sheet = context.workbook.worksheets.getActiveWorksheet();
+          // const sheet = context.workbook.worksheets.getActiveWorksheet();
+          const sheet = context.workbook.worksheets.getItem(input.sheetName);
           // const range = sheet.getRange(input.cells);
           const json_data = JSON.parse(input.data);
 
@@ -198,7 +200,7 @@ export const editCellsTool = tool(
           await context.sync();
         });
         console.log(`Updated cells successfully`);
-        return `Successfully updated cells ${input.cells}`
+        return `Successfully updated cells ${input.cells} on sheet ${input.sheetName}`
       } catch (error) {
         console.log("Error: " + error);
         return "Error: " + error;
@@ -206,7 +208,7 @@ export const editCellsTool = tool(
     },
     {
       name: "edit_cells",
-      description: "Update the properties of cells within a specified range in the active Excel worksheet. Use this tool to modify spreadsheet cell data including styles and format.",
+      description: "Update the properties of cells within a specified range in the specified sheet. Use this tool to modify a sheet's cell data.",
       schema: editCellsSchema,
     }
   )
