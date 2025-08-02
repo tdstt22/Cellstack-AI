@@ -20,51 +20,8 @@ const CELL_PROPERTIES = {
 
 const EDIT_CELL_DATA_DESCRIPTION = `JSON formatted data for the cells that need to be edited in sheet. Only supply data for the cells that need to be updated. DO NOT provide data for cells that remain the same.
 The JSON data should have keys being the cell coordinates in A1 Notation (such as "A1" or "B3"). 
-The values should be a dictionary containing the properties of the cell. The cell properties are as follows:
-{
-  "value": Value of the cell (String/Number/Boolean)
-  "format": {
-    "fill": {
-      "color": Color in Hex Value (String)
-      "nofill": true or false (String)
-    },
-    "font": {
-      "color": Color in Hex Value (String)
-      "bold": true or false (Boolean)
-      "name": Font name (String)
-      "size": Font size (Integer)
-    }
-  }
-}
-
-Here is an example of a properly formatted data:
-{
-  "A1": {
-    "value": "Hello"
-    "format": {
-      "fill": {
-        "color": "#FF0000",
-      },
-      "font": {
-        "color": "#000000",
-        "bold": true,
-        "name": "Avenir",
-        "size": 12,
-      }
-    }
-  }
-}
-
-If any cell property DOES NOT need to be updated, leave it out of the JSON data. For example, if you want to update the just the fill color of A1 to red then supply to following data:
-{
-  "A1": {
-    "format": {
-      "fill": {
-        "color": "#FF0000",
-      }
-    }
-  }
-}
+The values should be a dictionary containing the properties of the cell. Here is an example of a properly formatted data: {"A1":{"value":"Hello","format":{"fill":{"color":"#FFFFFF","nofill":true},"font":{"color":"#000000","bold":true,"name":"Avenir","size":12}}}}
+If any cell property DOES NOT need to be updated, leave it out of the JSON data. For example, if you want to update the just the fill color of A1 to red then supply to following data: {"A1":{"format":{"fill":{"color":"#FF0000"}}}}
 `
 
 const viewCellsSchema = z.object({
@@ -75,6 +32,13 @@ const viewCellsSchema = z.object({
 const editCellsSchema = z.object({
   sheetName: z.string().describe("Name of sheet to edit (e.g. 'Sheet1', 'Index', 'Output')"),
   data: z.string(). describe(EDIT_CELL_DATA_DESCRIPTION),
+})
+
+const copyCellsSchema = z.object({
+  sourceSheet: z.string().describe("Name of source sheet to copy from (e.g. 'Sheet1', 'Index', 'Output')"),
+  targetSheet: z.string().describe("Name of target sheet to copy to (e.g. 'Sheet1', 'Index', 'Output')"),
+  sourceRange: z.string().describe("Cell range in sourceSheet to copy in A1 notation (e.g. 'A1', 'A1:C3', 'B2:D5'). Range can be a single cell or a range of cells."),
+  targetRange: z.string().describe("The target destination inside targetSheet to copy to in A1 Notation. **IMPORTANT** This will be a single cell that marks the top-left of the range (e.g. 'E1', 'A1')"),
 })
 
 // const editCellsSchema = z.object({
@@ -97,7 +61,7 @@ export const viewCellsTool = tool(
         // console.log(`rowIndex ${range.rowIndex} columnIndex ${range.columnIndex}`);
 
         // console.log(`font ${JSON.stringify(range.format, null, 4)}`);
-        console.log("Running View Cells...");
+        console.log(`View sheet ${input.sheetName} at ${input.cells}`);
 
 
         const values = range.values;
@@ -116,7 +80,13 @@ export const viewCellsTool = tool(
             // Sync to get the data from the workbook.
             await context.sync();
             const cellProperties = propertiesToGet.value[0][0];
+            const nofill = cellProperties.format.fill.tintAndShade === null;
             const cellValue = values[row][col];
+
+            // Bypass if nofill and no value
+            if (cellValue === "" && nofill) break;
+            if (cellValue === "" && cellProperties.format.fill.color === "#FFFFFF") break;
+
             const formulaValue = formulas[row][col];
             const adj_row = row + topLeftRowIndex;
             const adj_col = col + topLeftColumnIndex;
@@ -146,7 +116,7 @@ export const viewCellsTool = tool(
         // }
         // console.log(JSON.stringify(data, null, 4));
 
-        return JSON.stringify(data, null, 4);
+        return JSON.stringify(data);
       });
       return result;
     } catch (error) {
@@ -156,62 +126,105 @@ export const viewCellsTool = tool(
   },
   {
     name: "view_cells",
-    description: "View the cells within a specified range in specific a sheet. This includes the value, style, and other cell properties. Use this tool to view data on a specific sheet.",
+    description: "View the cells within a specified range in specific a sheet. This includes the value, style, and other cell properties. Use this tool to view data on a specific sheet. This tool is expensive so never read more than 150 cells per call. All cells that have empty value and no fill will NOT be returned (i.e. default cells are NOT part of the resonse).",
     schema: viewCellsSchema,
   }
 )
 
 export const editCellsTool = tool(
-    async (input) => {
-      try {
-        await Excel.run(async (context) => {
-          // const sheet = context.workbook.worksheets.getActiveWorksheet();
-          const sheet = context.workbook.worksheets.getItem(input.sheetName);
-          // const range = sheet.getRange(input.cells);
-          const json_data = JSON.parse(input.data);
+  async (input) => {
+    try {
+      await Excel.run(async (context) => {
+        // const sheet = context.workbook.worksheets.getActiveWorksheet();
+        const sheet = context.workbook.worksheets.getItem(input.sheetName);
+        // const range = sheet.getRange(input.cells);
+        const json_data = JSON.parse(input.data);
 
-          // console.log(json_data);
-          console.log("Running Edit Cells...");
-          console.log(input.data);
+        // console.log(json_data);
+        console.log(`Running Edit edit cells on sheet ${input.sheetName}`);
+        // console.log(input.data);
 
-          // Iterate through JSON data
-          Object.keys(json_data).forEach(key => {
-            const cell = sheet.getRange(key);
-            //Update value
-            if (json_data[key]?.value !== undefined) cell.values = [[json_data[key].value]];
+        // Iterate through JSON data
+        Object.keys(json_data).forEach(key => {
+          const cell = sheet.getRange(key);
+          //Update value
+          if (json_data[key]?.value !== undefined) cell.values = [[json_data[key].value]];
+        
+          // Update Font
+          if (json_data[key]?.format?.font?.color !== undefined) cell.format.font.color = json_data[key].format.font.color;
+          if (json_data[key]?.format?.font?.bold !== undefined) cell.format.font.bold = json_data[key].format.font.bold;
+          if (json_data[key]?.format?.font?.name !== undefined) cell.format.font.name = json_data[key].format.font.name;
+          if (json_data[key]?.format?.font?.size !== undefined) cell.format.font.size = json_data[key].format.font.size;
           
-            // Update Font
-            if (json_data[key]?.format?.font?.color !== undefined) cell.format.font.color = json_data[key].format.font.color;
-            if (json_data[key]?.format?.font?.bold !== undefined) cell.format.font.bold = json_data[key].format.font.bold;
-            if (json_data[key]?.format?.font?.name !== undefined) cell.format.font.name = json_data[key].format.font.name;
-            if (json_data[key]?.format?.font?.size !== undefined) cell.format.font.size = json_data[key].format.font.size;
-            
-            // Update Fill
-            if (json_data[key]?.format?.fill?.color !== undefined) cell.format.fill.color = json_data[key].format.fill.color;
-            if (json_data[key]?.format?.fill?.nofill === true) cell.format.fill.clear();
+          // Update Fill
+          if (json_data[key]?.format?.fill?.color !== undefined) cell.format.fill.color = json_data[key].format.fill.color;
+          if (json_data[key]?.format?.fill?.nofill === true) cell.format.fill.clear();
 
-            // Auto-fit columns
-            cell.format.autofitColumns();
-            // // Round to 2 decimal
-            // cell.numberFormat = [["0.00"]]; 
-          });
-          // range.values = json_data.data;
-          // range.format.autofitColumns();
-          await context.sync();
+          // Auto-fit columns
+          cell.format.autofitColumns();
+          // // Round to 2 decimal
+          // cell.numberFormat = [["0.00"]]; 
         });
-        console.log(`Updated cells successfully`);
-        return `Successfully updated cells ${input.cells} on sheet ${input.sheetName}`
-      } catch (error) {
-        console.log("Error: " + error);
-        return "Error: " + error;
-      }
-    },
-    {
-      name: "edit_cells",
-      description: "Update the properties of cells within a specified range in the specified sheet. Use this tool to modify a sheet's cell data.",
-      schema: editCellsSchema,
+        // range.values = json_data.data;
+        // range.format.autofitColumns();
+        await context.sync();
+      });
+      console.log(`Updated cells successfully`);
+      return `Successfully updated cells`
+    } catch (error) {
+      console.log("Error: " + error);
+      return "Error: " + error;
     }
-  )
+  },
+  {
+    name: "edit_cells",
+    description: "Update the properties of cells within a specified range in the specified sheet. Use this tool to modify a sheet's cell data. Always edits under 50 cells at time. If you need to edit many cells, break them down into smaller chunks and when using this tool.",
+    schema: editCellsSchema,
+  }
+)
+
+export const copyCellsTool = tool(
+  async (input) => {
+    try {
+      await Excel.run(async (context) => {
+        console.log(`Running Copy from ${input.sourceSheet} to ${input.targetSheet}`);
+        // Source Sheet
+        const sourceSheet = context.workbook.worksheets.getItem(input.sourceSheet);
+        // Target sheet
+        const targetSheet = context.workbook.worksheets.getItem(input.targetSheet);
+
+        // Define the source range.
+        const sourceRange = sourceSheet.getRange(input.sourceRange); // Replace "A1:C10" with your desired source range
+
+        // Define the destination range (top-left cell of where you want to paste).
+        const targetRange = targetSheet.getRange(input.targetRange); // Replace "E1" with your desired destination cell
+
+        // Load the source range to ensure its properties are available for copying.
+        sourceRange.load("values, formulas, format");
+
+        // Synchronize the context to load the range data.
+        await context.sync();
+
+        // Copy the source range to the destination range.
+        // The copyFrom method can take optional parameters for copyType, skipBlanks, and transpose.
+        targetRange.copyFrom(sourceRange, Excel.RangeCopyType.formulasAndNumberFormats, false, false);
+
+        // Synchronize the context to apply the changes.
+        await context.sync();
+      });
+      console.log(`Copying ${input.sourceSheet}!${input.sourceRange} to ${input.targetSheet}!${input.targetRange}`);
+      return `Successfully copied ${input.sourceSheet}!${input.sourceRange} to ${input.targetSheet}!${input.targetRange}`
+    } catch (error) {
+      console.log("Error: " + error);
+      return "Error: " + error;
+    }
+  },
+  {
+    name: "copy_cells",
+    description: "Copy cells from sourceSheet to targetSheet. Use this tool when needing to copy cells from one sheet to another, instead of using edit_cells. This tool can also be used to copy contents within the same sheet.",
+    schema: copyCellsSchema,
+  }
+)
 
 // export const editCellsTool = tool(
 //   async (input) => {

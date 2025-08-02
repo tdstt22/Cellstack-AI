@@ -1,6 +1,6 @@
 import { ChatAnthropic } from "@langchain/anthropic";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
-import { viewCellsTool, editCellsTool } from "./aiTools";
+import { viewCellsTool, editCellsTool, copyCellsTool } from "./aiTools";
 import { generateAgentPrompt } from "./promptService";
 
 // Polyfill for Promise.allSettled for IE11 compatibility
@@ -45,7 +45,7 @@ class LLMClient {
   }
 
   createTools() {
-    return [viewCellsTool, editCellsTool]
+    return [viewCellsTool, editCellsTool, copyCellsTool]
   }
 
   async chatClaude(message) {
@@ -106,6 +106,7 @@ Your main goal is to follow the USER's instructions at each message. Respond in 
 
     let inputs = { messages: [{ role: "user", content: message }] };
     let final_msg = null;
+    let first_msg_returned = false;
     for await (
       const chunk of await agent.stream(inputs, {
         streamMode: "values",
@@ -115,14 +116,24 @@ Your main goal is to follow the USER's instructions at each message. Respond in 
     ) {
       const messages = chunk["messages"];
       let msg = messages[messages?.length - 1];
+      // console.log(msg);
       if (msg?.content) {
-        console.log("Msg Content...");
-        // console.log(msg.content);
+        
         final_msg = msg.content;
-        for (const content of msg.content) {
-          if (content.type === "text") onMessage(content.text);
+        
+        if (msg?.response_metadata?.role === "assistant") {
+          console.log("Msg Content...");
+          console.log(msg.content);
+          for (const content of msg.content) {
+            if (content.type === "text" && !first_msg_returned) {
+              onMessage(content.text);
+              first_msg_returned = true;
+            }
+          }
         }
-      } else if (msg?.tool_calls?.length > 0) {
+      }
+
+      if (msg?.tool_calls?.length > 0) {
         console.log("Tools...");
         console.log(msg.tool_calls);
       } else {

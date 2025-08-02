@@ -7,7 +7,7 @@ import EmptyState from "./EmptyState";
 import ConversationHistory from "./ConversationHistory";
 import MessageInputArea from "./MessageInputArea";
 import backendClient from "../services/backendClient";
-import { executeToolCalls, viewCellsTool, editCellsTool } from "../services/aiTools";
+import { executeToolCalls, viewCellsTool, editCellsTool, copyCellsTool } from "../services/aiTools";
 import llmClient from "../services/llmClient";
 
 const useStyles = makeStyles({
@@ -101,8 +101,9 @@ const ChatInterface = () => {
           );
         }
       );
-      // viewCellsTool.invoke({ sheetName: "Index", cells: "C10" });
+      // viewCellsTool.invoke({ sheetName: "Assumption", cells: "A1:G3" });
       // editCellsTool.invoke({sheetName: "test", data: `{"K1":{"value":"hello world","format":{"fill":{"color":"#FF0000"},"font":{"color":"#000000","bold":true,"name":"Avenir","size":12}}}}`})
+      // copyCellsTool.invoke({ sourceSheet: "Assumption", targetSheet: "scratchpad", sourceRange: "A5:G7", targetRange: "C3" });
       // const aimessage = "hello world";
 
       accumulatedText = accumulatedText + "\n\n" + "---" + "\n\n" + aimessage;
