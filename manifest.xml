@@ -4,8 +4,8 @@
   <Version>1.0.0.0</Version>
   <ProviderName>Rex Admin</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="AI Copilot"/>
-  <Description DefaultValue="AI copilot for Excel"/>
+  <DisplayName DefaultValue="Cellstack AI"/>
+  <Description DefaultValue="Cellstack AI"/>
   <IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/icon-64.png"/>
   <SupportUrl DefaultValue="https://localhost:3000/help"/>
@@ -74,7 +74,7 @@
       <bt:ShortStrings>
         <bt:String id="GetStarted.Title" DefaultValue="Get started with your sample add-in!"/>
         <bt:String id="CommandsGroup.Label" DefaultValue="Commands Group"/>
-        <bt:String id="TaskpaneButton.Label" DefaultValue="AI Copilot"/>
+        <bt:String id="TaskpaneButton.Label" DefaultValue="Cellstack"/>
       </bt:ShortStrings>
       <bt:LongStrings>
         <bt:String id="GetStarted.Description" DefaultValue="Your sample add-in loaded successfully. Go to the HOME tab and click the 'Show Task Pane' button to get started."/>
