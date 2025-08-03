@@ -1,66 +1,189 @@
-# Build Excel add-ins using Office Add-ins Development Kit
+# Cellstack - Excel Office Add-in with AI Chat
 
-Excel add-ins are integrations built by third parties into Excel by using [Excel JavaScript API](https://learn.microsoft.com/en-us/office/dev/add-ins/reference/overview/excel-add-ins-reference-overview) and [Office Platform capabilities](https://learn.microsoft.com/en-us/office/dev/add-ins/overview/office-add-ins).
+An Excel Office Add-in featuring a modern AI chat interface that provides Excel help, formula assistance, and data analysis guidance through natural language interactions.
 
-## How to run this project
+## Prerequisites
 
-### Prerequisites
+- **Node.js** (v16 or higher) - Visit the [Node.js site](https://nodejs.org/) to download and install
+- **npm** (comes with Node.js) - Verify installation with `node -v` and `npm -v`
+- **Microsoft 365 account** with Excel access - You might qualify for a [Microsoft 365 E5 developer subscription](https://developer.microsoft.com/microsoft-365/dev-program)
+- **Anthropic API key** for AI functionality
 
-- Node.js (the latest LTS version). Visit the [Node.js site](https://nodejs.org/) to download and install the right version for your operating system. To verify that you've already installed these tools, run the commands `node -v` and `npm -v` in your terminal.
-- Office connected to a Microsoft 365 subscription. You might qualify for a Microsoft 365 E5 developer subscription through the [Microsoft 365 Developer Program](https://developer.microsoft.com/microsoft-365/dev-program), see [FAQ](https://learn.microsoft.com/office/developer-program/microsoft-365-developer-program-faq#who-qualifies-for-a-microsoft-365-e5-developer-subscription-) for details. Alternatively, you can [sign up for a 1-month free trial](https://www.microsoft.com/microsoft-365/try?rtc=1) or [purchase a Microsoft 365 plan](https://www.microsoft.com/microsoft-365/buy/compare-all-microsoft-365-products).
+## Setup
 
-### Run the add-in using Office Add-ins Development Kit extension
+1. **Clone and install dependencies:**
+
+   ```bash
+   git clone <repository-url>
+   cd rex-demo
+   npm install
+   ```
+
+2. **Configure environment variables:**
+
+   ```bash
+   cp .env.template .env
+   ```
+
+   Edit `.env` and add your Anthropic API key:
+
+   ```
+   ANTHROPIC_API_KEY=your_api_key_here
+   FRONTEND_PORT=3000
+   BACKEND_PORT=3001
+   ```
+
+3. **Sign in to Microsoft 365 (optional but recommended):**
+   ```bash
+   npm run signin
+   ```
+
+## Running Locally
+
+## Using Office Add-ins Development Kit Extension (Recommended)
+
+If you prefer using VS Code with the Office Add-ins Development Kit extension:
 
 1. **Open the Office Add-ins Development Kit**
-    
-    In the **Activity Bar**, select the **Office Add-ins Development Kit** icon to open the extension.
+   - In VS Code's Activity Bar, select the Office Add-ins Development Kit icon
 
-1. **Preview Your Office Add-in (F5)**
+2. **Preview Your Office Add-in (F5)**
+   - Select "Preview Your Office Add-in(F5)" and choose "Excel Desktop (Edge Chromium)"
+   - This launches Excel and sideloads the add-in
 
-    Select **Preview Your Office Add-in(F5)** to launch the add-in and debug the code. In the Quick Pick menu, select the option **Excel Desktop (Edge Chromium)**.
+3. **Stop Previewing**
+   - Select "Stop Previewing Your Office Add-in" when finished
 
-    The extension then checks that the prerequisites are met before debugging starts. Check the terminal for detailed information if there are issues with your environment. After this process, the Excel desktop application launches and sideloads the add-in.
+### Full Development Environment (Alternative)
 
-1. **Stop Previewing Your Office Add-in**
+Start both frontend and backend servers concurrently:
 
-    Once you are finished testing and debugging the add-in, select **Stop Previewing Your Office Add-in**. This closes the web server and removes the add-in from the registry and cache.
+```bash
+npm run dev:fullstack
+```
 
-## Use the add-in project
+This will:
 
-The add-in project that you've created contains sample code for a basic task pane add-in.
+- Start the React frontend on https://localhost:3000 with hot reloading
+- Start the Express.js backend on http://localhost:3001 with auto-restart
+- Automatically proxy API calls from frontend to backend
 
-## Explore the add-in code
+### Individual Services
 
-To explore an Office add-in project, you can start with the key files listed below.
+**Frontend only:**
 
-- The `./manifest.xml` file in the root directory of the project defines the settings and capabilities of the add-in.  <br>You can check whether your manifest file is valid by selecting **Validate Manifest File** option from the Office Add-ins Development Kit.
-- The `./src/taskpane/taskpane.html` file contains the HTML markup for the task pane.
-- The `./src/taskpane/**/*.jsx` file contains the react code and Office JavaScript API code that facilitates interaction between the task pane and the Excel application.
+```bash
+npm run dev-server
+```
+
+**Backend only:**
+
+```bash
+npm run backend
+```
+
+### Testing in Excel
+
+1. Start the development servers (using `npm run dev:fullstack`)
+2. Launch the add-in in Excel:
+   ```bash
+   npm start
+   ```
+3. Excel will open with the add-in loaded in the task pane
+
+To stop the add-in:
+
+```bash
+npm stop
+```
+
+## Development Commands
+
+### Build Commands
+
+- `npm run build` - Production build
+- `npm run build:dev` - Development build
+- `npm run watch` - Development build with file watching
+
+### Code Quality
+
+- `npm run lint` - Check code with office-addin-lint
+- `npm run lint:fix` - Auto-fix linting issues
+- `npm run prettier` - Format code with Prettier
+- `npm run validate` - Validate the manifest.xml file
+
+### Office 365 Authentication
+
+- `npm run signin` - Sign in to Microsoft 365 account
+- `npm run signout` - Sign out of Microsoft 365 account
+
+## Architecture
+
+- **Frontend**: React 18 app served on port 3000
+- **Backend**: Express.js API server on port 3001
+- **AI Integration**: Anthropic Claude API with Server-Sent Events streaming
+- **Office Integration**: Office JavaScript API for Excel functionality
+
+## Project Structure
+
+```
+src/
+├── taskpane/              # React frontend
+│   ├── components/        # UI components
+│   ├── services/          # Backend client & Excel API
+│   └── styles/           # Theme and styling
+├── backend/              # Express.js backend
+│   ├── routes/           # API endpoints
+│   ├── services/         # AI service integration
+│   └── middleware/       # Custom middleware
+└── commands/             # Office add-in commands
+```
 
 ## Troubleshooting
 
-If you have problems running the add-in, take these steps.
+### Common Issues
 
-- Close any open instances of Excel.
-- Close the previous web server started for the add-in with the **Stop Previewing Your Office Add-in** Office Add-ins Development Kit extension option.
+**Port conflicts:**
 
-If you still have problems, see [troubleshoot development errors](https://learn.microsoft.com//office/dev/add-ins/testing/troubleshoot-development-errors) or [create a GitHub issue](https://aka.ms/officedevkitnewissue) and we'll help you.  
+- Change ports in `.env` file if 3000 or 3001 are in use
 
-For information on running the add-in on Excel on the web, see [Sideload Office Add-ins to Office on the web](https://learn.microsoft.com/office/dev/add-ins/testing/sideload-office-add-ins-for-testing).
+**SSL certificate warnings:**
 
-For information on debugging on older versions of Office, see [Debug add-ins using developer tools in Microsoft Edge Legacy](https://learn.microsoft.com/office/dev/add-ins/testing/debug-add-ins-using-devtools-edge-legacy).
+- Accept the self-signed certificate warning in your browser for https://localhost:3000
 
-## Make code changes
+**Add-in not loading:**
 
-All the information about Office Add-ins is found in our [official documentation](https://learn.microsoft.com/office/dev/add-ins/overview/office-add-ins). You can also explore more samples in the Office Add-ins Development Kit. Select **View Samples** to see more samples of real-world scenarios.
+```bash
+npm run validate  # Check manifest.xml
+npm stop && npm start  # Restart the add-in
+```
 
-If you edit the manifest as part of your changes, use the **Validate Manifest File** option in the Office Add-ins Development Kit. This shows you errors in the manifest syntax.
+**AI responses not working:**
 
-## Engage with the team
+- Verify your `ANTHROPIC_API_KEY` is set correctly in `.env`
+- Check backend logs for API errors
 
-Did you experience any problems? [Create an issue](https://aka.ms/officedevkitnewissue) and we'll help you out.
+### Development Tips
 
-Want to learn more about new features and best practices for the Office platform? [Join the Microsoft Office Add-ins community call](https://learn.microsoft.com/office/dev/add-ins/overview/office-add-ins-community-call).
+- Use browser dev tools on the task pane for debugging
+- Backend logs show AI API interactions and errors
+- The add-in automatically reloads when frontend code changes
+- Backend restarts automatically when server code changes
+
+## Production Deployment
+
+1. Update `urlProd` in `webpack.config.js` with your production domain
+2. Build the project: `npm run build`
+3. Deploy the `dist/` folder to your web server
+4. Update the manifest.xml with production URLs
+5. Publish the add-in through Microsoft AppSource or deploy privately
+
+## Key Files
+
+- `./manifest.xml` - Add-in settings and capabilities
+- `./src/taskpane/components/` - React UI components
+- `./src/backend/` - Express.js API server
+- `./CLAUDE.md` - Project documentation and development guidance
 
 ## Copyright
 
@@ -68,4 +191,4 @@ Copyright (c) 2024 Microsoft Corporation. All rights reserved.
 
 ## Disclaimer
 
-**THIS CODE IS PROVIDED *AS IS* WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING ANY IMPLIED WARRANTIES OF FITNESS FOR A PARTICULAR PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.**
+**THIS CODE IS PROVIDED _AS IS_ WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING ANY IMPLIED WARRANTIES OF FITNESS FOR A PARTICULAR PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.**
